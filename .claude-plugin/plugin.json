@@ -1,0 +1,14 @@
+{
+  "name": "remote-guard",
+  "displayName": "Remote/Cloud Guard",
+  "version": "0.1.0",
+  "description": "Forces a yes/no approval before any remote/cloud command (gcloud, gsutil, bq, aws, az, kubectl, ssh, scp, terraform), classifying read vs write, with a per-session /unguard bypass toggle.",
+  "author": {
+    "name": "Woohyun Cho",
+    "url": "https://github.com/k1064190"
+  },
+  "homepage": "https://github.com/k1064190/claude-remote-guard",
+  "repository": "https://github.com/k1064190/claude-remote-guard",
+  "license": "MIT",
+  "keywords": ["security", "guard", "hooks", "cloud", "gcloud", "aws", "kubectl", "ssh", "terraform", "approval"]
+}

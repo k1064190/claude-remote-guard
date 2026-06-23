@@ -1,0 +1,17 @@
+{
+  "name": "cho-plugins",
+  "description": "Doctor Cho's Claude Code plugins",
+  "owner": {
+    "name": "Woohyun Cho",
+    "url": "https://github.com/k1064190"
+  },
+  "plugins": [
+    {
+      "name": "remote-guard",
+      "source": ".",
+      "description": "Approval guard for remote/cloud commands with read/write classification and a /unguard session bypass.",
+      "category": "security",
+      "keywords": ["security", "guard", "cloud", "approval"]
+    }
+  ]
+}
