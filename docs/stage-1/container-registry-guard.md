@@ -12,8 +12,10 @@ v1 binaries) are now guarded, but **only for registry-bound operations**, classi
 **write**:
 
 - `push` / `publish` — incl. `image push`, `manifest push`, compose `push`/`publish`
-- buildx registry exporters — the `--push` shorthand and its `--output type=registry`
-  / `--output=type=image,…,push=true` / `-o type=registry` equivalents
+- buildx registry exporters / cache writes — the `--push` shorthand and the
+  `type=registry` / `push=true` forms on `--output`/`-o`/`--cache-to` (a read-only
+  `--cache-from type=registry` import is deliberately not guarded)
+- `buildx imagetools create` — publishing a (multi-arch) manifest to a registry
 - `login` / `logout`
 
 Left untouched (pass silently, per Doctor Cho's scoping): `pull`, `search`, and all
@@ -30,32 +32,39 @@ prompt-free:
 - `container_re` — CLI in command position, then (optionally past intermediate words
   like `image`/`manifest`/`compose`) the verb `push|publish|login|logout`. The op is
   held to the same command segment via `[^;|&]*`; the trailing boundary
-  `[[:space:];|&)]|$` lets a terminal verb match even when a separator or `)` follows.
-- `container_pushflag_re` / `container_exporter_re` — buildx pushes via the `--push`
-  shorthand or its exporter equivalents (`type=registry`, `push=true`), matched
-  separately since they are flags, not subcommands.
-- `scan` folds bash line continuations (backslash-newline) and flattens newlines/tabs
-  to spaces, so a multi-line command (e.g. `docker buildx build … --push` split across
-  lines) is seen on one line.
+  `[[:space:];|&)<>]|$` lets a terminal verb match even when a separator, `)`, or a
+  redirection (`<` `>`) follows.
+- `container_pushflag_re` — the buildx `--push` shorthand (`--push`, `--push=true|1`,
+  but not `--push=false`), a flag, not a subcommand.
+- `container_exporter_re` — registry exporter / cache-write forms (`type=registry`,
+  `push=true`) tied to `--output`/`-o`/`--cache-to`, so a read-only `--cache-from
+  type=registry` cache import is not misclassified as a write.
+- `container_imagetools_re` — `buildx imagetools create` (manifest publish).
+- `scan` folds bash line continuations (backslash-newline) the way the shell does,
+  turns tabs into spaces, and turns other newlines into `;` so they act as the command
+  separators bash treats them as — keeping a multi-line `docker buildx build … --push`
+  matched while a local `docker build .` on its own line stays quiet.
 
 Detection biases toward over-protection (a stray `echo push` arg may prompt) because
 the cardinal rule is **never under-protect**.
 
 ### Known limitations (accepted, documented)
 Consistent with the pre-existing `remote_re`, the guard does not see into nested
-shells (`bash -c "docker push …"`), backtick/`$()` strings, or absolute-path
-invocations (`/usr/bin/docker push`). Hardening those would have to be done uniformly
-across the whole hook (a separate change), not just for container ops.
+shells (`bash -c "docker push …"`), backtick/`$()` strings, quoted shell
+metacharacters (a `;`/`|`/`&` inside a quoted arg before the verb), or absolute-path
+invocations (`/usr/bin/docker push`). These would need quote/shell-aware parsing done
+uniformly across the whole hook (a separate change), not just for container ops.
 
 ## Code locations
-- `scripts/guard-remote-ops.sh:27-55` — `scan` normalization + `container_re` /
-  `container_pushflag_re` / `container_exporter_re` + `is_container` detection
-- `scripts/guard-remote-ops.sh:66-67` — container ops forced to **write** class
-- `scripts/guard-remote-ops.sh:83-87` — CLI-name extraction + "Container registry
+- `scripts/guard-remote-ops.sh:27-60` — `scan` normalization + `container_re` /
+  `container_pushflag_re` / `container_exporter_re` / `container_imagetools_re` +
+  `is_container` detection
+- `scripts/guard-remote-ops.sh:72` — container ops forced to **write** class
+- `scripts/guard-remote-ops.sh:88-91` — CLI-name extraction + "Container registry
   operation" reason label
-- `tests/test-guard-remote-ops.sh` — 51 behavior tests (guarded ops, pass-through,
-  separators, multi-line, compose v1, buildx exporters, compose publish, bypass-flag
-  interaction, regression)
+- `tests/test-guard-remote-ops.sh` — 61 behavior tests (guarded ops, pass-through,
+  separators, multi-line, compose v1/publish, buildx exporters/imagetools, redirections,
+  cache-from exclusion, bypass-flag interaction, regression)
 - `README.md`, `.claude-plugin/plugin.json` — doc/description aligned
 
 ## Review loop
@@ -71,13 +80,18 @@ across the whole hook (a separate change), not just for container ops.
   flatten + alternation). Pushed back on absolute-path / `bash -c` / printf-newline
   notes (pre-existing whole-hook boundary; target platform is GNU grep). Confirmed the
   classification/bypass logic is correct.
-- **Codex GitHub bot (PR #1, codex-pr-review loop):** three more under-protections,
-  all **fixed** — (P1) buildx exporter pushes (`--output type=registry` / `push=true`)
-  that the `--push`-only matcher missed; (P2) a `docker\<newline>push` continuation
-  where the backslash stuck to the CLI and broke the match (the `scan` now folds
-  continuations the way the shell does); (P2) `docker compose publish` as a registry
-  write (added `publish`).
-- Regression tests added for every fix; full suite green (51/51).
+- **Codex GitHub bot (PR #1, round 1):** three under-protections, all **fixed** — (P1)
+  buildx exporter pushes (`--output type=registry` / `push=true`) the `--push`-only
+  matcher missed; (P2) a `docker\<newline>push` continuation where the backslash stuck
+  to the CLI; (P2) `docker compose publish` (added `publish`).
+- **Codex GitHub bot (PR #1, round 2):** six more, **five fixed** — (P1) redirections
+  (`docker push>log`) now treated as token boundaries; (P2) `buildx imagetools create`
+  manifest publish now guarded; (P2) the exporter matcher tied to `--output`/`-o`/
+  `--cache-to` so a read-only `--cache-from type=registry` is no longer flagged; (P3)
+  newlines kept as command separators; (P3) `--push=false` no longer prompts. Pushed
+  back on (P2) quoted-shell-metacharacter parsing — a whole-hook heuristic limitation,
+  now documented.
+- Regression tests added for every fix; full suite green (61/61).
 
 ## Retrospective
 The subcommand-aware approach kept local docker noise-free while closing the push gap.

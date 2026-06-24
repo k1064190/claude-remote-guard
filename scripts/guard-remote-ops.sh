@@ -27,30 +27,35 @@ remote_re='(^|[[:space:]]|[;|&(=])(gcloud|gsutil|bq|aws|az|kubectl|ssh|scp|terra
 # Container image tooling (docker/podman/nerdctl, incl. the hyphenated *-compose v1
 # binaries) is used mostly for local work, so only registry-bound operations are
 # guarded: outbound push/publish (incl. `image push`, `manifest push`, compose
-# `push`/`publish`, and buildx) and credential login/logout. Local build/run and
-# read-only pull/search pass through. The op must sit in the same command segment as
-# the CLI ([^;|&]*). The trailing boundary [[:space:];|&)] (or end) treats whitespace,
-# a shell separator, or a subshell ')' as a token end -- so `docker compose push`,
-# `docker logout`, and `(docker login)` still match when the verb is the last token,
-# while substrings like `run pushgateway` or `--network login-net` stay quiet. buildx
-# pushes are matched apart since they are flags, not subcommands: the `--push`
-# shorthand and the equivalent exporter forms (`--output type=registry`,
-# `--output=type=image,...,push=true`, `-o type=registry`). (Like the remote_re above,
-# this does not see into nested shells such as `bash -c "..."` or absolute-path calls.)
+# `push`/`publish`, and `buildx imagetools create`) and credential login/logout.
+# Local build/run and read-only pull/search/inspect pass through. The op must sit in
+# the same command segment as the CLI ([^;|&]*). The trailing boundary [[:space:];|&)<>]
+# (or end) treats whitespace, a shell separator, a subshell ')', or a redirection
+# (< >) as a token end -- so `docker compose push`, `docker logout`, `(docker login)`,
+# and `docker push>out.log` all match when the verb is the last token, while substrings
+# like `run pushgateway` or `--network login-net` stay quiet. buildx pushes are matched
+# apart since they are flags/exporters, not subcommands: the `--push` shorthand (but not
+# `--push=false`) and the registry exporter / cache-write forms tied to
+# `--output`/`-o`/`--cache-to` (`type=registry`, `push=true`) -- a read-only
+# `--cache-from type=registry` import is deliberately NOT matched. (Like the remote_re
+# above, this does not see into nested shells such as `bash -c "..."`, quoted shell
+# metacharacters, or absolute-path calls.)
 #
-# Bash line continuations (backslash-newline) are folded the way the shell would --
-# so `docker\<newline>  push` becomes `docker  push` -- then any remaining newlines or
-# tabs are flattened to spaces, so a multi-line command (e.g. a `docker buildx build`
-# with `--push` on its own line) is scanned as a single segment.
-scan=$(printf '%s' "$command" | sed -e ':j' -e '/\\$/{N;s/\\\n//;bj}' | tr '\n\t' '  ')
-container_re='(^|[[:space:]]|[;|&(=])(docker|podman|nerdctl|docker-compose|podman-compose)[[:space:]]([^;|&]*[[:space:]])?(push|publish|login|logout)([[:space:];|&)]|$)'
-container_pushflag_re='(^|[[:space:]]|[;|&(=])(docker|podman|nerdctl|docker-compose|podman-compose)[[:space:]][^;|&]*--push([[:space:]=;|&)]|$)'
-container_exporter_re='(^|[[:space:]]|[;|&(=])(docker|podman|nerdctl|docker-compose|podman-compose)[[:space:]][^;|&]*(type=registry|push=true)([^[:alnum:]_]|$)'
+# Bash line continuations (backslash-newline) are folded the way the shell would -- so
+# `docker\<newline>  push` becomes `docker  push` -- tabs become spaces, and any other
+# newline becomes a `;` so it acts as the command separator bash treats it as (a local
+# `docker build .` on its own line, then an unrelated `push`, stays quiet).
+scan=$(printf '%s' "$command" | sed -e ':j' -e '/\\$/{N;s/\\\n//;bj}' | tr '\t' ' ' | tr '\n' ';')
+container_re='(^|[[:space:]]|[;|&(=])(docker|podman|nerdctl|docker-compose|podman-compose)[[:space:]]([^;|&]*[[:space:]])?(push|publish|login|logout)([[:space:];|&)<>]|$)'
+container_pushflag_re='(^|[[:space:]]|[;|&(=])(docker|podman|nerdctl|docker-compose|podman-compose)[[:space:]][^;|&]*--push(=(true|1))?([[:space:];|&)<>]|$)'
+container_exporter_re='(^|[[:space:]]|[;|&(=])(docker|podman|nerdctl|docker-compose|podman-compose)[[:space:]][^;|&]*(--output|--cache-to|-o)[[:space:]=][^[:space:];|&]*(type=registry|push=true)([^[:alnum:]_]|$)'
+container_imagetools_re='(^|[[:space:]]|[;|&(=])(docker|podman|nerdctl)[[:space:]][^;|&]*imagetools[[:space:]]([^;|&]*[[:space:]])?create([[:space:];|&)<>]|$)'
 
 is_container=0
 if printf '%s' "$scan" | grep -Eiq "$container_re" \
    || printf '%s' "$scan" | grep -Eiq "$container_pushflag_re" \
-   || printf '%s' "$scan" | grep -Eiq "$container_exporter_re"; then
+   || printf '%s' "$scan" | grep -Eiq "$container_exporter_re" \
+   || printf '%s' "$scan" | grep -Eiq "$container_imagetools_re"; then
   is_container=1
 fi
 

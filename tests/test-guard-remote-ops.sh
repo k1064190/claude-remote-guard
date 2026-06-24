@@ -90,6 +90,18 @@ expect prompt 'docker buildx build -o type=registry -t x .'
 expect prompt 'docker compose publish ghcr.io/acme/app:latest'
 expect prompt 'docker-compose publish reg/app:1'
 
+# Redirections are token boundaries too -- the verb/flag is still the registry write.
+expect prompt 'docker push>push.log'
+expect prompt 'docker login<token.txt'
+expect prompt 'docker buildx build --push>build.log -t ghcr.io/acme/app .'
+
+# buildx imagetools create publishes a (multi-arch) manifest to a registry.
+expect prompt 'docker buildx imagetools create -t ghcr.io/acme/app:latest a b'
+
+# buildx exporter / cache-write forms, tied to --output / -o / --cache-to.
+expect prompt 'docker buildx build --cache-to type=registry,ref=ghcr.io/acme/cache .'
+expect prompt 'docker buildx build --push=true -t x .'
+
 # Push / login / logout are all the write class.
 classified write 'docker push myregistry.io/app:v1'
 classified write 'docker login myregistry.io'
@@ -107,6 +119,10 @@ expect pass 'docker run --network login-net alpine'            # 'login' as a su
 expect pass 'docker build . && echo pushed'                    # push after a separator, not a docker op
 expect pass 'docker buildx build --output type=local -t x .'   # local exporter, not a registry push
 expect pass 'docker buildx build --output type=docker -t x .'  # loads into the local daemon, no push
+expect pass 'docker buildx build --cache-from type=registry,ref=ghcr.io/acme/cache .'  # cache import (read)
+expect pass 'docker buildx imagetools inspect ghcr.io/acme/app:latest'                 # read-only manifest read
+expect pass 'docker buildx build --push=false -t local/app .'                          # push explicitly disabled
+expect pass "$(printf 'docker build .\necho push')"                                    # newline = command separator
 
 # --- Out-of-scope: git push and bare tokens are not container ops -----------------
 expect pass 'git push origin main'
