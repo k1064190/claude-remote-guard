@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Remote/Cloud Guard — 단계별 진행 상황</title>
+  <style>
+    :root {
+      --bg: #f7f7f5;
+      --card: #fcfcfb;
+      --border: #e2e2dd;
+      --text: #20242a;
+      --muted: #6a7079;
+      --accent: #1f6f6b;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+    header.page-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    header.page-header h1 {
+      margin: 0;
+      font-size: 1.65rem;
+      letter-spacing: -0.01em;
+    }
+    header.page-header .subtitle {
+      margin: 0.25rem 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    nav.lang {
+      font-size: 0.9rem;
+      color: var(--muted);
+      white-space: nowrap;
+      padding-top: 0.35rem;
+    }
+    nav.lang a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    nav.lang a:hover {
+      text-decoration: underline;
+    }
+    nav.lang .current {
+      color: var(--muted);
+    }
+    nav.lang .sep {
+      margin: 0 0.45rem;
+      color: var(--border);
+    }
+    nav.timeline {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 0 0 2.5rem;
+      padding: 0.5rem 0;
+    }
+    .node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .node .dot {
+      width: 1.15rem;
+      height: 1.15rem;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 3px solid var(--accent);
+      box-shadow: 0 0 0 4px rgba(31, 111, 107, 0.14);
+    }
+    .node .node-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    section.stage h2 {
+      margin: 0 0 0.35rem;
+      font-size: 1.3rem;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
+    section.stage .stage-summary {
+      margin: 0 0 1.5rem;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+    article.card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem 1.5rem 1.75rem;
+    }
+    article.card h3 {
+      margin: 0 0 1rem;
+      font-size: 1.15rem;
+      letter-spacing: -0.01em;
+    }
+    .field {
+      margin-bottom: 1.1rem;
+    }
+    .field:last-child {
+      margin-bottom: 0;
+    }
+    .field h4 {
+      margin: 0 0 0.35rem;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+    }
+    .field p {
+      margin: 0 0 0.6rem;
+    }
+    .field p:last-child {
+      margin-bottom: 0;
+    }
+    .field ul {
+      margin: 0.3rem 0 0.6rem;
+      padding-left: 1.2rem;
+    }
+    .field ul:last-child {
+      margin-bottom: 0;
+    }
+    .field li {
+      margin-bottom: 0.3rem;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.85em;
+      background: #eef1ef;
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+      color: #243b39;
+    }
+    .codelist {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .codelist li {
+      margin-bottom: 0.45rem;
+      line-height: 1.5;
+    }
+    .codelist li:last-child {
+      margin-bottom: 0;
+    }
+    .retro {
+      font-style: italic;
+      color: #353b42;
+    }
+    @media (max-width: 720px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      header.page-header {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="page-header">
+      <div>
+        <h1>Remote/Cloud Guard</h1>
+        <p class="subtitle">단계별 진행 상황</p>
+      </div>
+      <nav class="lang" aria-label="언어">
+        <a href="index.html" lang="en">EN</a>
+        <span class="sep">|</span>
+        <span class="current">한국어</span>
+      </nav>
+    </header>
+
+    <nav class="timeline" aria-label="단계 타임라인">
+      <div class="node">
+        <span class="dot"></span>
+        <span class="node-label">1단계</span>
+      </div>
+    </nav>
+
+    <section class="stage">
+      <h2>1단계</h2>
+      <p class="stage-summary">컨테이너 레지스트리 push/login 가드.</p>
+
+      <div class="grid">
+        <article class="card">
+          <h3>Container Registry Guard</h3>
+
+          <div class="field">
+            <h4>왜</h4>
+            <p>
+              가드 훅은 고정된 CLI 화이트리스트(<code>gcloud</code>,
+              <code>gsutil</code>, <code>bq</code>, <code>aws</code>,
+              <code>az</code>, <code>kubectl</code>, <code>ssh</code>,
+              <code>scp</code>, <code>terraform</code>)에서만 동작했다.
+              레지스트리로의 <code>docker push</code>는 그 목록에 없었기 때문에,
+              승인 프롬프트 없이 이미지가 푸시되었다 — Doctor Cho가 정확히
+              마주친 빈틈이다. 레지스트리 푸시도 원격 인프라에 도달하므로 반드시
+              가드해야 한다.
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>무엇을</h4>
+            <p>
+              docker / podman / nerdctl(그리고 하이픈이 들어간 docker-compose /
+              podman-compose v1 바이너리)는 이제 가드되지만, 레지스트리로 향하는
+              작업에 한해서만이며 write로 분류된다:
+            </p>
+            <ul>
+              <li>push — <code>image push</code>, <code>manifest push</code>, compose <code>push</code>, buildx <code>--push</code> 포함</li>
+              <li>login / logout</li>
+            </ul>
+            <p>
+              그대로 둔 것(Doctor Cho의 범위 설정에 따라 조용히 통과): pull,
+              search, 그리고 모든 로컬 작업(build, run, ps, images, logs, …).
+              결정에 따라 범위 밖: git push와 패키지 배포(helm/npm/twine).
+            </p>
+            <p>
+              <code>/unguard write</code> 우회는 다른 write 클래스 작업과
+              동일하게 이들을 관장하며, <code>/unguard read</code>만으로는
+              그렇지 않다.
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>어떻게</h4>
+            <p>
+              서브커맨드 인식 매칭(CLI만 보는 <code>remote_re</code>와 달리)이라
+              로컬 docker는 프롬프트 없이 유지된다:
+            </p>
+            <ul>
+              <li><code>container_re</code> — 명령 위치의 CLI, 그다음(선택적으로 image/manifest/compose 같은 중간 단어를 지나) push|login|logout 동사. 해당 작업은 <code>[^;|&amp;]*</code>로 같은 명령 세그먼트에 묶이며, 후행 경계 <code>[[:space:];|&amp;)]|$</code>는 구분자나 <code>)</code>가 뒤따라도 종단 동사가 매칭되도록 한다.</li>
+              <li><code>container_pushflag_re</code> — buildx <code>--push</code> 플래그. 서브커맨드가 아니라 플래그이므로 별도로 매칭한다.</li>
+              <li>줄바꿈/탭은 공백으로 평탄화(스캔)되므로, 줄 연속으로 이어진 명령(예: 여러 줄에 걸친 <code>docker buildx build … --push</code>)도 한 줄로 보인다.</li>
+            </ul>
+            <p>
+              탐지는 과보호 쪽으로 편향된다(엉뚱한 <code>echo push</code> 인자가
+              프롬프트를 띄울 수 있다). 가장 중요한 원칙이 절대 과소보호하지
+              않는 것이기 때문이다.
+            </p>
+            <p>
+              알려진 한계(수용 및 문서화): 기존 <code>remote_re</code>와
+              일관되게, 가드는 중첩 셸(<code>bash -c "docker push …"</code>),
+              백틱/<code>$()</code> 문자열, 절대 경로 호출(<code>/usr/bin/docker
+              push</code>)의 내부를 보지 못한다. 이를 강화하려면 컨테이너 작업만이
+              아니라 훅 전체에 걸쳐 일관되게 적용해야 하며(별도 변경), 이번
+              범위에는 포함되지 않는다.
+            </p>
+            <p>
+              리뷰 루프: code-reviewer-pro 서브에이전트는 critical 0 / warning 0
+              / 문서 전용 제안 2건을 찾았다. codex(gpt-5.5, high)는 실제 critical
+              과소보호를 발견했다 — 마지막 토큰인 동사 뒤에 공백 없이
+              ;/&amp;/|/)가 바로 따라오는 경우를 놓쳤으며, 후행 경계를 넓혀
+              수정했다. antigravity(Gemini 3.1 Pro High)는 범위 내의 현실적인
+              누락 2건 — 여러 줄 명령과 docker-compose v1 바이너리 — 을 찾았고
+              둘 다 수정했다. 모든 수정에 회귀 테스트를 추가했으며, 전체 스위트
+              통과(43/43).
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>코드 위치</h4>
+            <ul class="codelist">
+              <li><code>scripts/guard-remote-ops.sh:27-49</code> — 스캔 정규화 + container_re / container_pushflag_re + is_container 탐지</li>
+              <li><code>scripts/guard-remote-ops.sh:60-61</code> — 컨테이너 작업을 write 클래스로 강제</li>
+              <li><code>scripts/guard-remote-ops.sh:77-85</code> — CLI 이름 추출 + "Container registry operation" 사유 라벨</li>
+              <li><code>tests/test-guard-remote-ops.sh</code> — 43개 동작 테스트</li>
+              <li><code>README.md</code>, <code>.claude-plugin/plugin.json</code> — 문서/설명 정합</li>
+            </ul>
+          </div>
+
+          <div class="field">
+            <h4>회고</h4>
+            <p class="retro">
+              서브커맨드 인식 방식은 로컬 docker를 잡음 없이 유지하면서 push
+              빈틈을 메웠다. 적대적 리뷰 패스는 제값을 했다: codex는 진짜
+              조용한 우회를 잡았고, antigravity는 해피 패스 테스트가 놓친 현실적인
+              누락 2건을 잡았다. 앞으로 가져갈 것: 매처가 한 줄에서 두 토큰을
+              필요로 할 때는 줄바꿈을 먼저 정규화하라.
+            </p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

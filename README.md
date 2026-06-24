@@ -7,11 +7,19 @@ infrastructure — even in auto / accept-edits modes.
 
 Covered CLIs: `gcloud`, `gsutil`, `bq`, `aws`, `az`, `kubectl`, `ssh`, `scp`, `terraform`.
 
+Container image tooling (`docker`, `podman`, `nerdctl`) is also covered, but only
+for **registry-bound** operations — `push` (incl. `image push`, `manifest push`,
+compose `push`, and buildx `--push`) and `login` / `logout`. Local work and
+read-only `pull` / `search` pass through without a prompt.
+
 ## What it does
 
 - A `PreToolUse` hook inspects every `Bash` command. If it invokes one of the
   CLIs above (matched only in command position, so `~/.ssh`, `bazel`, `awscli`
   don't false-trigger), Claude Code prompts you to approve or reject it.
+- For `docker` / `podman` / `nerdctl` it prompts only on registry pushes and
+  `login` / `logout` (all **write**), so `docker build` / `run` / `ps` and
+  `docker pull` stay quiet.
 - Each matched command is **classified**:
   - **read** — `list` / `describe` / `get` / `show` / `logs` / `plan` / `top` …
   - **write/dangerous** — `create` / `delete` / `update` / `apply` / `exec` /
