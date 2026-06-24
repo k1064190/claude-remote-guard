@@ -4,7 +4,7 @@
 # remote server / cloud resource via gcloud, gsutil, bq, aws, az, kubectl, ssh,
 # scp, or terraform -- including read-only queries (조회). It also guards container
 # image tooling (docker/podman/nerdctl), but only for registry-bound operations --
-# push and login/logout -- so local build/run and read-only pull/search stay quiet.
+# push/publish and login/logout -- so local build/run and read-only pull/search stay quiet.
 #
 # Each matched command is classified read vs write so the /unguard toggles can
 # bypass the two classes independently (see scripts/guard-remote-toggle.sh).
@@ -26,25 +26,31 @@ remote_re='(^|[[:space:]]|[;|&(=])(gcloud|gsutil|bq|aws|az|kubectl|ssh|scp|terra
 
 # Container image tooling (docker/podman/nerdctl, incl. the hyphenated *-compose v1
 # binaries) is used mostly for local work, so only registry-bound operations are
-# guarded: outbound push (incl. `image push`, `manifest push`, compose `push`) and
-# credential login/logout. Local build/run and read-only pull/search pass through.
-# The op must sit in the same command segment as the CLI ([^;|&]*). The trailing
-# boundary [[:space:];|&)] (or end) treats whitespace, a shell separator, or a
-# subshell ')' as a token end -- so `docker compose push`, `docker logout`, and
-# `(docker login)` still match when the verb is the last token, while substrings
-# like `run pushgateway` or `--network login-net` stay quiet. `--push` (buildx) is
-# matched apart since it is a flag, not a subcommand. (Like the remote_re above, this
-# does not see into nested shells such as `bash -c "..."` or absolute-path invocations.)
+# guarded: outbound push/publish (incl. `image push`, `manifest push`, compose
+# `push`/`publish`, and buildx) and credential login/logout. Local build/run and
+# read-only pull/search pass through. The op must sit in the same command segment as
+# the CLI ([^;|&]*). The trailing boundary [[:space:];|&)] (or end) treats whitespace,
+# a shell separator, or a subshell ')' as a token end -- so `docker compose push`,
+# `docker logout`, and `(docker login)` still match when the verb is the last token,
+# while substrings like `run pushgateway` or `--network login-net` stay quiet. buildx
+# pushes are matched apart since they are flags, not subcommands: the `--push`
+# shorthand and the equivalent exporter forms (`--output type=registry`,
+# `--output=type=image,...,push=true`, `-o type=registry`). (Like the remote_re above,
+# this does not see into nested shells such as `bash -c "..."` or absolute-path calls.)
 #
-# Newlines/tabs are flattened to spaces first so a line-continued command -- e.g. a
-# multi-line `docker buildx build` with `--push` on its own line -- still matches.
-scan=$(printf '%s' "$command" | tr '\n\t' '  ')
-container_re='(^|[[:space:]]|[;|&(=])(docker|podman|nerdctl|docker-compose|podman-compose)[[:space:]]([^;|&]*[[:space:]])?(push|login|logout)([[:space:];|&)]|$)'
+# Bash line continuations (backslash-newline) are folded the way the shell would --
+# so `docker\<newline>  push` becomes `docker  push` -- then any remaining newlines or
+# tabs are flattened to spaces, so a multi-line command (e.g. a `docker buildx build`
+# with `--push` on its own line) is scanned as a single segment.
+scan=$(printf '%s' "$command" | sed -e ':j' -e '/\\$/{N;s/\\\n//;bj}' | tr '\n\t' '  ')
+container_re='(^|[[:space:]]|[;|&(=])(docker|podman|nerdctl|docker-compose|podman-compose)[[:space:]]([^;|&]*[[:space:]])?(push|publish|login|logout)([[:space:];|&)]|$)'
 container_pushflag_re='(^|[[:space:]]|[;|&(=])(docker|podman|nerdctl|docker-compose|podman-compose)[[:space:]][^;|&]*--push([[:space:]=;|&)]|$)'
+container_exporter_re='(^|[[:space:]]|[;|&(=])(docker|podman|nerdctl|docker-compose|podman-compose)[[:space:]][^;|&]*(type=registry|push=true)([^[:alnum:]_]|$)'
 
 is_container=0
 if printf '%s' "$scan" | grep -Eiq "$container_re" \
-   || printf '%s' "$scan" | grep -Eiq "$container_pushflag_re"; then
+   || printf '%s' "$scan" | grep -Eiq "$container_pushflag_re" \
+   || printf '%s' "$scan" | grep -Eiq "$container_exporter_re"; then
   is_container=1
 fi
 

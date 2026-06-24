@@ -9,8 +9,9 @@ Covered CLIs: `gcloud`, `gsutil`, `bq`, `aws`, `az`, `kubectl`, `ssh`, `scp`, `t
 
 Container image tooling (`docker`, `podman`, `nerdctl`) is also covered, but only
 for **registry-bound** operations — `push` (incl. `image push`, `manifest push`,
-compose `push`, and buildx `--push`) and `login` / `logout`. Local work and
-read-only `pull` / `search` pass through without a prompt.
+compose `push`/`publish`, buildx `--push` and its `--output type=registry` /
+`push=true` exporter forms) and `login` / `logout`. Local work and read-only `pull`
+/ `search` pass through without a prompt.
 
 ## What it does
 

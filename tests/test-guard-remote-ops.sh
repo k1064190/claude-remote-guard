@@ -78,6 +78,17 @@ expect prompt 'podman-compose push web'
 # Line-continued / multi-line command: CLI and verb land on different lines.
 expect prompt "$(printf 'docker \\\n push reg/x:1')"
 expect prompt "$(printf 'docker buildx build -t reg/x . \\\n  --push')"
+# Backslash flush against the CLI name -- the shell joins it to `docker  push`.
+expect prompt "$(printf 'docker\\\n  push reg/x:1')"
+
+# buildx publishes to a registry via exporter flags, not just the --push shorthand.
+expect prompt 'docker buildx build --output type=registry -t ghcr.io/acme/app .'
+expect prompt 'docker buildx build --output=type=image,push=true -t x .'
+expect prompt 'docker buildx build -o type=registry -t x .'
+
+# compose publish ships images to a registry.
+expect prompt 'docker compose publish ghcr.io/acme/app:latest'
+expect prompt 'docker-compose publish reg/app:1'
 
 # Push / login / logout are all the write class.
 classified write 'docker push myregistry.io/app:v1'
@@ -94,6 +105,8 @@ expect pass 'docker logs mycontainer'
 expect pass 'docker run --name pushgateway prom/pushgateway'   # 'push' as a substring
 expect pass 'docker run --network login-net alpine'            # 'login' as a substring
 expect pass 'docker build . && echo pushed'                    # push after a separator, not a docker op
+expect pass 'docker buildx build --output type=local -t x .'   # local exporter, not a registry push
+expect pass 'docker buildx build --output type=docker -t x .'  # loads into the local daemon, no push
 
 # --- Out-of-scope: git push and bare tokens are not container ops -----------------
 expect pass 'git push origin main'

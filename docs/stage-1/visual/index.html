@@ -241,18 +241,17 @@
               registry-bound operations, classified write:
             </p>
             <ul>
-              <li>push — incl. <code>image push</code>, <code>manifest push</code>, compose <code>push</code>, and buildx <code>--push</code></li>
+              <li>push / publish — incl. <code>image push</code>, <code>manifest push</code>, compose <code>push</code>/<code>publish</code></li>
+              <li>buildx registry exporters — the <code>--push</code> shorthand and its <code>--output type=registry</code> / <code>--output=type=image,…,push=true</code> / <code>-o type=registry</code> equivalents</li>
               <li>login / logout</li>
             </ul>
             <p>
               Left untouched (pass silently, per Doctor Cho's scoping): pull,
               search, and all local work (build, run, ps, images, logs, …). Out
               of scope by decision: git push and package publishing
-              (helm/npm/twine).
-            </p>
-            <p>
-              The <code>/unguard write</code> bypass governs these the same as
-              any other write-class op; <code>/unguard read</code> alone does not.
+              (helm/npm/twine). The <code>/unguard write</code> bypass governs
+              these the same as any other write-class op;
+              <code>/unguard read</code> alone does not.
             </p>
           </div>
 
@@ -263,9 +262,9 @@
               <code>remote_re</code>), so local docker stays prompt-free:
             </p>
             <ul>
-              <li><code>container_re</code> — CLI in command position, then (optionally past intermediate words like image/manifest/compose) the verb push|login|logout. The op is held to the same command segment via <code>[^;|&amp;]*</code>; the trailing boundary <code>[[:space:];|&amp;)]|$</code> lets a terminal verb match even when a separator or <code>)</code> follows it.</li>
-              <li><code>container_pushflag_re</code> — the buildx <code>--push</code> flag, matched separately since it is a flag, not a subcommand.</li>
-              <li>Newlines/tabs are flattened to spaces (scan) so a line-continued command (e.g. multi-line <code>docker buildx build … --push</code>) is still seen on one line.</li>
+              <li><code>container_re</code> — CLI in command position, then (optionally past intermediate words like image/manifest/compose) the verb push|publish|login|logout. The op is held to the same command segment via <code>[^;|&amp;]*</code>; the trailing boundary <code>[[:space:];|&amp;)]|$</code> lets a terminal verb match even when a separator or <code>)</code> follows.</li>
+              <li><code>container_pushflag_re</code> / <code>container_exporter_re</code> — buildx pushes via the <code>--push</code> shorthand or its exporter equivalents (<code>type=registry</code>, <code>push=true</code>), matched separately since they are flags, not subcommands.</li>
+              <li>scan folds bash line continuations (backslash-newline) and flattens newlines/tabs to spaces, so a multi-line command (e.g. <code>docker buildx build … --push</code> split across lines) is seen on one line.</li>
             </ul>
             <p>
               Detection biases toward over-protection (a stray
@@ -288,18 +287,24 @@
               directly by ;/&amp;/|/) (no space) was missed; fixed by widening the
               trailing boundary. antigravity (Gemini 3.1 Pro High) found two
               realistic in-scope misses — multi-line commands and the
-              docker-compose v1 binary; both fixed. Regression tests added for
-              every fix; full suite green (43/43).
+              docker-compose v1 binary; both fixed. Codex GitHub bot (PR #1) found
+              three more under-protections, all fixed: (P1) buildx exporter pushes
+              (<code>--output type=registry</code> / <code>push=true</code>) that
+              the <code>--push</code>-only matcher missed; (P2) a
+              <code>docker\&lt;newline&gt;push</code> continuation where the
+              backslash stuck to the CLI; (P2) <code>docker compose publish</code>
+              as a registry write. Regression tests added for every fix; full
+              suite green (51/51).
             </p>
           </div>
 
           <div class="field">
             <h4>Code locations</h4>
             <ul class="codelist">
-              <li><code>scripts/guard-remote-ops.sh:27-49</code> — scan normalization + container_re / container_pushflag_re + is_container detection</li>
-              <li><code>scripts/guard-remote-ops.sh:60-61</code> — container ops forced to write class</li>
-              <li><code>scripts/guard-remote-ops.sh:77-85</code> — CLI-name extraction + "Container registry operation" reason label</li>
-              <li><code>tests/test-guard-remote-ops.sh</code> — 43 behavior tests</li>
+              <li><code>scripts/guard-remote-ops.sh:27-55</code> — scan normalization + container_re / container_pushflag_re / container_exporter_re + is_container detection</li>
+              <li><code>scripts/guard-remote-ops.sh:66-67</code> — container ops forced to write class</li>
+              <li><code>scripts/guard-remote-ops.sh:83-87</code> — CLI-name extraction + "Container registry operation" reason label</li>
+              <li><code>tests/test-guard-remote-ops.sh</code> — 51 behavior tests</li>
               <li><code>README.md</code>, <code>.claude-plugin/plugin.json</code> — doc/description aligned</li>
             </ul>
           </div>
@@ -309,10 +314,12 @@
             <p class="retro">
               The subcommand-aware approach kept local docker noise-free while
               closing the push gap. The adversarial review pass earned its keep:
-              codex caught a genuine silent-bypass and antigravity caught two
-              realistic misses that the happy-path tests didn't. Carry forward:
-              when a matcher needs two tokens on one line, normalize newlines up
-              front.
+              the three review passes (local + two subagents) plus the Codex
+              GitHub bot each caught genuine silent-bypasses that the happy-path
+              tests didn't — registry writes have many spellings (--push,
+              exporter flags, compose publish). Carry forward: enumerate every
+              spelling of a remote-write verb, and when a matcher needs two tokens
+              on one line, fold continuations up front.
             </p>
           </div>
         </article>
