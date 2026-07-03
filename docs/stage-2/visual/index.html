@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Remote/Cloud Guard — Staged plan progress</title>
+  <style>
+    :root {
+      --bg: #f7f7f5;
+      --card: #fcfcfb;
+      --border: #e2e2dd;
+      --text: #20242a;
+      --muted: #6a7079;
+      --accent: #1f6f6b;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+    header.page-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    header.page-header h1 {
+      margin: 0;
+      font-size: 1.65rem;
+      letter-spacing: -0.01em;
+    }
+    header.page-header .subtitle {
+      margin: 0.25rem 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    nav.lang {
+      font-size: 0.9rem;
+      color: var(--muted);
+      white-space: nowrap;
+      padding-top: 0.35rem;
+    }
+    nav.lang a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    nav.lang a:hover {
+      text-decoration: underline;
+    }
+    nav.lang .current {
+      color: var(--muted);
+    }
+    nav.lang .sep {
+      margin: 0 0.45rem;
+      color: var(--border);
+    }
+    nav.timeline {
+      display: flex;
+      align-items: center;
+      margin: 0 0 2.5rem;
+      padding: 0.5rem 0;
+    }
+    .node-row {
+      display: flex;
+      align-items: center;
+      flex: 1;
+    }
+    .node-row:last-child {
+      flex: 0 0 auto;
+    }
+    .node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      flex: 0 0 auto;
+    }
+    .node .dot {
+      width: 1.15rem;
+      height: 1.15rem;
+      border-radius: 50%;
+      background: var(--muted);
+      border: 3px solid var(--muted);
+    }
+    .node .dot.current {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(31, 111, 107, 0.14);
+    }
+    .node .dot.future {
+      background: transparent;
+      border-color: var(--accent);
+    }
+    .node .node-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .node .node-label.current {
+      color: var(--accent);
+    }
+    .connector {
+      height: 2px;
+      background: var(--border);
+      flex: 1;
+      margin: 0 0.6rem;
+      align-self: flex-start;
+      margin-top: 0.57rem;
+    }
+    section.stage h2 {
+      margin: 0 0 0.35rem;
+      font-size: 1.3rem;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
+    section.stage .stage-summary {
+      margin: 0 0 1.5rem;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+    article.card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem 1.5rem 1.75rem;
+    }
+    article.card h3 {
+      margin: 0 0 1rem;
+      font-size: 1.15rem;
+      letter-spacing: -0.01em;
+    }
+    .field {
+      margin-bottom: 1.1rem;
+    }
+    .field:last-child {
+      margin-bottom: 0;
+    }
+    .field h4 {
+      margin: 0 0 0.35rem;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+    }
+    .field p {
+      margin: 0 0 0.6rem;
+    }
+    .field p:last-child {
+      margin-bottom: 0;
+    }
+    .field ul {
+      margin: 0.3rem 0 0.6rem;
+      padding-left: 1.2rem;
+    }
+    .field ul:last-child {
+      margin-bottom: 0;
+    }
+    .field li {
+      margin-bottom: 0.3rem;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.85em;
+      background: #eef1ef;
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+      color: #243b39;
+    }
+    .codelist {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .codelist li {
+      margin-bottom: 0.45rem;
+      line-height: 1.5;
+    }
+    .codelist li:last-child {
+      margin-bottom: 0;
+    }
+    .retro {
+      font-style: italic;
+      color: #353b42;
+    }
+    @media (max-width: 720px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      header.page-header {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="page-header">
+      <div>
+        <h1>Remote/Cloud Guard</h1>
+        <p class="subtitle">Staged plan progress</p>
+      </div>
+      <nav class="lang" aria-label="Language">
+        <span class="current">EN</span>
+        <span class="sep">|</span>
+        <a href="index.ko.html" lang="ko">한국어</a>
+      </nav>
+    </header>
+
+    <nav class="timeline" aria-label="Stage timeline">
+      <div class="node-row">
+        <div class="node">
+          <span class="dot"></span>
+          <span class="node-label">Stage 1</span>
+        </div>
+        <div class="connector"></div>
+      </div>
+      <div class="node-row">
+        <div class="node">
+          <span class="dot current"></span>
+          <span class="node-label current">Stage 2</span>
+        </div>
+      </div>
+    </nav>
+
+    <section class="stage">
+      <h2>Stage 2</h2>
+      <p class="stage-summary">Made <code>/unguard</code> bypasses time-boxed and optionally persistent, so the guard can re-arm itself instead of relying on a blanket session reset.</p>
+
+      <div class="grid">
+        <article class="card">
+          <h3>Unguard TTL Persist</h3>
+
+          <div class="field">
+            <h4>Why</h4>
+            <p>
+              Re-running <code>/unguard</code> every session was annoying when
+              the user knows what they're doing; a blanket SessionStart
+              <code>rm -f</code> reset every bypass on each restart. The user
+              wanted the reset itself controllable from the command, ideally
+              time-boxed so the guard re-arms on its own.
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>What</h4>
+            <p><code>/unguard &lt;read|write|all&gt; [30m|2h|45s|N|persist]</code>:</p>
+            <ul>
+              <li>duration → bypass survives restarts, auto-expires (max 24h; bare number = minutes); mid-session expiry re-arms the guard on the very next guarded command</li>
+              <li><code>persist</code> → survives until <code>/unguard off</code></li>
+              <li>no argument → unchanged session-scoped flip (100% backward compatible)</li>
+              <li><code>status</code> shows remaining time</li>
+            </ul>
+          </div>
+
+          <div class="field">
+            <h4>How</h4>
+            <p>
+              The flag file contents encode the mode: empty = session, digits =
+              expiry epoch, <code>persist</code> = permanent, anything else =
+              inactive (never under-protects). The SessionStart hook was
+              changed from a blanket <code>rm -f</code> to
+              <code>guard-remote-session-reset.sh</code>, which only clears
+              session-scoped, expired, or unrecognized flags.
+              <code>guard-remote-ops.sh</code> gained <code>flag_active()</code>
+              which does the same expiry check per command. The
+              <code>/unguard</code> slash command passes all args as one word,
+              so the toggle script re-splits <code>$*</code>.
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>Review loop</h4>
+            <p>
+              <code>code-reviewer-pro</code> subagent flagged a check-then-read
+              race: a flag deleted between <code>[ -f ]</code> and
+              <code>cat</code> reads as <code>''</code> → wrongly "session
+              bypass active". Fixed in <code>flag_active()</code> and
+              <code>state()</code> (<code>cat … || return inactive</code>,
+              commit <code>c1c61a7</code>). Dismissed: the same race in the
+              session-reset script (outcome is still correct — the file ends
+              up deleted) and an extra-argument usage warning (out of scope).
+              Codex PR review runs on the PR.
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>Code locations</h4>
+            <ul class="codelist">
+              <li><code>scripts/guard-remote-toggle.sh</code> — duration/persist parsing, TTL write, status with remaining time</li>
+              <li><code>scripts/guard-remote-ops.sh:83-101</code> — <code>flag_active()</code> expiry-aware bypass check</li>
+              <li><code>scripts/guard-remote-session-reset.sh</code> — new SessionStart cleanup</li>
+              <li><code>hooks/hooks.json</code> — SessionStart now calls the reset script</li>
+              <li><code>tests/test-guard-remote-toggle.sh</code> (new, 20 asserts), <code>tests/test-guard-remote-ops.sh</code> (TTL/persist flag-content cases)</li>
+            </ul>
+          </div>
+
+          <div class="field">
+            <h4>Retrospective</h4>
+            <p class="retro">
+              Encoding the mode in flag contents kept the old empty-file format
+              valid, so everything stayed backward compatible with no
+              migration.
+            </p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

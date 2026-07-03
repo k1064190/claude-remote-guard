@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Remote/Cloud Guard — 단계별 진행 상황</title>
+  <style>
+    :root {
+      --bg: #f7f7f5;
+      --card: #fcfcfb;
+      --border: #e2e2dd;
+      --text: #20242a;
+      --muted: #6a7079;
+      --accent: #1f6f6b;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+    header.page-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    header.page-header h1 {
+      margin: 0;
+      font-size: 1.65rem;
+      letter-spacing: -0.01em;
+    }
+    header.page-header .subtitle {
+      margin: 0.25rem 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    nav.lang {
+      font-size: 0.9rem;
+      color: var(--muted);
+      white-space: nowrap;
+      padding-top: 0.35rem;
+    }
+    nav.lang a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    nav.lang a:hover {
+      text-decoration: underline;
+    }
+    nav.lang .current {
+      color: var(--muted);
+    }
+    nav.lang .sep {
+      margin: 0 0.45rem;
+      color: var(--border);
+    }
+    nav.timeline {
+      display: flex;
+      align-items: center;
+      margin: 0 0 2.5rem;
+      padding: 0.5rem 0;
+    }
+    .node-row {
+      display: flex;
+      align-items: center;
+      flex: 1;
+    }
+    .node-row:last-child {
+      flex: 0 0 auto;
+    }
+    .node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      flex: 0 0 auto;
+    }
+    .node .dot {
+      width: 1.15rem;
+      height: 1.15rem;
+      border-radius: 50%;
+      background: var(--muted);
+      border: 3px solid var(--muted);
+    }
+    .node .dot.current {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(31, 111, 107, 0.14);
+    }
+    .node .dot.future {
+      background: transparent;
+      border-color: var(--accent);
+    }
+    .node .node-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .node .node-label.current {
+      color: var(--accent);
+    }
+    .connector {
+      height: 2px;
+      background: var(--border);
+      flex: 1;
+      margin: 0 0.6rem;
+      align-self: flex-start;
+      margin-top: 0.57rem;
+    }
+    section.stage h2 {
+      margin: 0 0 0.35rem;
+      font-size: 1.3rem;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
+    section.stage .stage-summary {
+      margin: 0 0 1.5rem;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+    article.card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem 1.5rem 1.75rem;
+    }
+    article.card h3 {
+      margin: 0 0 1rem;
+      font-size: 1.15rem;
+      letter-spacing: -0.01em;
+    }
+    .field {
+      margin-bottom: 1.1rem;
+    }
+    .field:last-child {
+      margin-bottom: 0;
+    }
+    .field h4 {
+      margin: 0 0 0.35rem;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+    }
+    .field p {
+      margin: 0 0 0.6rem;
+    }
+    .field p:last-child {
+      margin-bottom: 0;
+    }
+    .field ul {
+      margin: 0.3rem 0 0.6rem;
+      padding-left: 1.2rem;
+    }
+    .field ul:last-child {
+      margin-bottom: 0;
+    }
+    .field li {
+      margin-bottom: 0.3rem;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.85em;
+      background: #eef1ef;
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+      color: #243b39;
+    }
+    .codelist {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .codelist li {
+      margin-bottom: 0.45rem;
+      line-height: 1.5;
+    }
+    .codelist li:last-child {
+      margin-bottom: 0;
+    }
+    .retro {
+      font-style: italic;
+      color: #353b42;
+    }
+    @media (max-width: 720px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      header.page-header {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="page-header">
+      <div>
+        <h1>Remote/Cloud Guard</h1>
+        <p class="subtitle">단계별 진행 상황</p>
+      </div>
+      <nav class="lang" aria-label="언어">
+        <a href="index.html" lang="en">EN</a>
+        <span class="sep">|</span>
+        <span class="current">한국어</span>
+      </nav>
+    </header>
+
+    <nav class="timeline" aria-label="단계 타임라인">
+      <div class="node-row">
+        <div class="node">
+          <span class="dot"></span>
+          <span class="node-label">1단계</span>
+        </div>
+        <div class="connector"></div>
+      </div>
+      <div class="node-row">
+        <div class="node">
+          <span class="dot current"></span>
+          <span class="node-label current">2단계</span>
+        </div>
+      </div>
+    </nav>
+
+    <section class="stage">
+      <h2>2단계</h2>
+      <p class="stage-summary"><code>/unguard</code> 우회를 시간 제한적이고 필요하면 영구적으로 만들어, 세션 전체를 초기화하는 대신 가드가 스스로 다시 활성화되도록 했습니다.</p>
+
+      <div class="grid">
+        <article class="card">
+          <h3>Unguard TTL Persist</h3>
+
+          <div class="field">
+            <h4>왜</h4>
+            <p>
+              사용자가 자신이 무엇을 하는지 잘 알고 있는 상황에서 세션마다
+              <code>/unguard</code>를 다시 실행하는 것은 번거로웠습니다.
+              그리고 SessionStart의 일괄 <code>rm -f</code> 리셋은 재시작할
+              때마다 모든 우회를 초기화해버렸습니다. 사용자는 이 리셋 자체를
+              명령에서 제어할 수 있기를, 가능하다면 시간 제한을 두어 가드가
+              스스로 다시 활성화되기를 원했습니다.
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>무엇을</h4>
+            <p><code>/unguard &lt;read|write|all&gt; [30m|2h|45s|N|persist]</code>:</p>
+            <ul>
+              <li>지속 시간 → 우회가 재시작 후에도 유지되며 자동 만료(최대 24시간; 단순 숫자는 분 단위); 세션 도중 만료되면 바로 다음 가드 대상 명령에서 가드가 다시 활성화됨</li>
+              <li><code>persist</code> → <code>/unguard off</code>할 때까지 유지</li>
+              <li>인자 없음 → 기존과 동일한 세션 범위 토글(100% 하위 호환)</li>
+              <li><code>status</code>가 남은 시간을 표시</li>
+            </ul>
+          </div>
+
+          <div class="field">
+            <h4>어떻게</h4>
+            <p>
+              플래그 파일의 내용이 모드를 인코딩합니다: 비어 있으면 세션,
+              숫자면 만료 epoch, <code>persist</code>면 영구, 그 외 값이면
+              비활성(절대 과소보호하지 않음). SessionStart 훅은 일괄
+              <code>rm -f</code>에서 <code>guard-remote-session-reset.sh</code>로
+              바뀌었으며, 이 스크립트는 세션 범위이거나 만료되었거나 인식할
+              수 없는 플래그만 정리합니다. <code>guard-remote-ops.sh</code>에는
+              명령마다 동일한 만료 검사를 수행하는 <code>flag_active()</code>가
+              추가되었습니다. <code>/unguard</code> 슬래시 명령은 모든 인자를
+              한 단어로 전달하므로, 토글 스크립트가 <code>$*</code>를
+              다시 분리합니다.
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>리뷰 루프</h4>
+            <p>
+              <code>code-reviewer-pro</code> 서브에이전트가 확인 후 읽기
+              레이스 컨디션을 지적했습니다 — <code>[ -f ]</code> 확인과
+              <code>cat</code> 사이에 플래그가 삭제되면 <code>''</code>로
+              읽혀 "세션 우회가 활성 상태"로 잘못 판단됩니다.
+              <code>flag_active()</code>와 <code>state()</code>에서 수정
+              (<code>cat … || return inactive</code>, 커밋
+              <code>c1c61a7</code>). 반려한 항목: 세션 리셋 스크립트에도
+              동일한 레이스가 있지만 결과적으로는 여전히 올바름(파일이
+              결국 삭제됨), 그리고 범위 밖의 추가 인자 사용법 경고. Codex
+              PR 리뷰는 PR에서 실행됩니다.
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>코드 위치</h4>
+            <ul class="codelist">
+              <li><code>scripts/guard-remote-toggle.sh</code> — 지속 시간/persist 파싱, TTL 기록, 남은 시간을 보여주는 status</li>
+              <li><code>scripts/guard-remote-ops.sh:83-101</code> — 만료를 인식하는 우회 검사 <code>flag_active()</code></li>
+              <li><code>scripts/guard-remote-session-reset.sh</code> — 새로운 SessionStart 정리 스크립트</li>
+              <li><code>hooks/hooks.json</code> — SessionStart가 이제 리셋 스크립트를 호출</li>
+              <li><code>tests/test-guard-remote-toggle.sh</code> (신규, assert 20건), <code>tests/test-guard-remote-ops.sh</code>(TTL/persist 플래그 내용 케이스)</li>
+            </ul>
+          </div>
+
+          <div class="field">
+            <h4>회고</h4>
+            <p class="retro">
+              모드를 플래그 내용에 인코딩한 덕분에 기존의 빈 파일 형식이
+              그대로 유효하게 유지되어, 마이그레이션 없이도 전체가
+              하위 호환성을 유지했습니다.
+            </p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
