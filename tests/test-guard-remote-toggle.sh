@@ -80,6 +80,25 @@ ok 'write persist -> persist flag' flag_is "$write_flag" persist
 toggle off >/dev/null
 ok 'off clears persist flag' flag_is "$write_flag" absent
 
+# --- Toggle: leading zeros are base 10, not octal ------------------------------------
+toggle write 010m >/dev/null
+exp=$(cat "$write_flag")
+ok '010m parses as 10 minutes (base 10)' test "$exp" -ge "$(( $(date +%s) + 590 ))"
+toggle write 08m >/dev/null               # would be an octal arithmetic error
+ok '08m accepted as 8 minutes' flag_is "$write_flag" epoch-future
+toggle off >/dev/null
+
+# --- Toggle: flipping a stale (expired/garbage) flag turns the bypass ON -------------
+printf '%s' "$(( $(date +%s) - 10 ))" > "$write_flag"
+toggle write >/dev/null
+ok 'flip on expired flag -> session bypass ON' flag_is "$write_flag" empty
+toggle off >/dev/null
+printf 'garbage!' > "$read_flag"
+toggle all >/dev/null                     # stale read flag counts as OFF -> both turn ON
+ok 'all with stale flag -> read session ON' flag_is "$read_flag" empty
+ok 'all with stale flag -> write session ON' flag_is "$write_flag" empty
+toggle off >/dev/null
+
 # --- Toggle: invalid / over-cap durations are rejected ------------------------------
 out=$(toggle write banana 2>&1)
 ok 'invalid duration rejected' flag_is "$write_flag" absent
@@ -87,6 +106,8 @@ printf '%s' "$out" | grep -qi 'usage\|invalid' \
   && pass=$((pass + 1)) || { fail=$((fail + 1)); echo 'FAIL  invalid duration should print usage'; }
 out=$(toggle write 25h 2>&1)
 ok 'duration above 24h cap rejected' flag_is "$write_flag" absent
+out=$(toggle write 99999999999999999999999999999999999999s 2>&1)
+ok 'overflow-sized duration rejected' flag_is "$write_flag" absent
 
 # --- Toggle: status reports remaining time ------------------------------------------
 toggle write 30m >/dev/null

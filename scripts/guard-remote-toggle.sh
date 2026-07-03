@@ -42,6 +42,11 @@ parse_ttl() {
     *)      n="$d" ;;
   esac
   case "$n" in ''|*[!0-9]*) return 1 ;; esac
+  # Length-cap before arithmetic: a huge digit string would overflow the
+  # -gt 86400 cap check into a silent pass. Force base 10 so a leading
+  # zero (010m) is not read as octal.
+  [ "${#n}" -le 6 ] || return 1
+  n=$((10#$n))
   case "$unit" in
     h) echo $((n * 3600)) ;;
     m) echo $((n * 60)) ;;
@@ -100,7 +105,22 @@ enable() {
   esac
 }
 
-flip() { if [ -f "$1" ]; then rm -f "$1"; else : > "$1"; fi; }
+# on <flag> — active per the same semantics as state()/flag_active(): an
+# expired or unrecognized flag counts as OFF, so one flip turns the bypass
+# on (truncating the stale file into a session flag) instead of merely
+# deleting it.
+on() {
+  local v
+  [ -f "$1" ] || return 1
+  v=$(cat "$1" 2>/dev/null) || return 1
+  case "$v" in
+    ''|persist) return 0 ;;
+    *[!0-9]*)   return 1 ;;
+    *)          [ "$now" -lt "$v" ] ;;
+  esac
+}
+
+flip() { if on "$1"; then rm -f "$1"; else : > "$1"; fi; }
 
 # Session mode keeps the original flip semantics; a duration/persist argument
 # always SETS (re-running refreshes the expiry instead of turning it off).
@@ -110,7 +130,7 @@ case "$action" in
   read)   apply "$read_flag" ;;
   write)  apply "$write_flag" ;;
   all)    if [ "$mode" = session ]; then
-            if [ -f "$read_flag" ] || [ -f "$write_flag" ]; then
+            if on "$read_flag" || on "$write_flag"; then
               rm -f "$read_flag" "$write_flag"          # any on -> turn both off
             else
               : > "$read_flag"; : > "$write_flag"       # both off -> turn both on
