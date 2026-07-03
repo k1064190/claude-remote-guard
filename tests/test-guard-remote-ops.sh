@@ -149,5 +149,25 @@ rm -f "$flag_dir/bypass-write"
 expect prompt 'docker push reg/x:1' # read bypass alone does not cover write-class push
 rm -f "$flag_dir/bypass-read"
 
+# --- Timed / persistent bypass flag contents ---------------------------------------
+# A flag holding a future epoch is active; a past epoch has expired (guard back on).
+now=$(date +%s)
+printf '%s' "$((now + 3600))" > "$flag_dir/bypass-write"
+expect pass 'docker push reg/x:1'          # unexpired TTL bypass
+printf '%s' "$((now - 10))" > "$flag_dir/bypass-write"
+expect prompt 'docker push reg/x:1'        # expired TTL -> prompt again
+test ! -f "$flag_dir/bypass-write" \
+  && pass=$((pass + 1)) \
+  || { fail=$((fail + 1)); echo 'FAIL  expired flag not cleaned up by hook'; }
+printf 'persist' > "$flag_dir/bypass-write"
+expect pass 'docker push reg/x:1'          # persistent bypass
+printf 'garbage!' > "$flag_dir/bypass-write"
+expect prompt 'docker push reg/x:1'        # unknown content -> guard stays on
+rm -f "$flag_dir/bypass-write"
+printf '%s' "$((now + 3600))" > "$flag_dir/bypass-read"
+expect pass 'aws s3 ls'                    # TTL read bypass covers read class
+expect prompt 'terraform apply'            # ...but not write class
+rm -f "$flag_dir/bypass-read"
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

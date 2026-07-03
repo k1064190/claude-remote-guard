@@ -26,9 +26,12 @@ and `login` / `logout`. Local work and read-only `pull` / `search` / `inspect` a
   - **read** — `list` / `describe` / `get` / `show` / `logs` / `plan` / `top` …
   - **write/dangerous** — `create` / `delete` / `update` / `apply` / `exec` /
     `ssh` / `scp` / `bq query` … and anything unrecognized (safe default).
-- The `/unguard` command lets you bypass either class for the current session.
-- A `SessionStart` hook clears all bypasses on every new session, so the guard
-  is always back on after a restart.
+- The `/unguard` command lets you bypass either class — for the current session
+  (default), for a limited time (`30m`, `2h` — survives restarts, guard re-arms
+  automatically when it expires), or until you turn it back on (`persist`).
+- A `SessionStart` hook clears session-scoped and expired bypasses on every new
+  session, so the guard is always back on after a restart unless you explicitly
+  asked for a longer window.
 
 ## Install
 
@@ -42,10 +45,13 @@ Updates: `claude plugin update remote-guard` (or auto-update on launch).
 ## Usage — `/unguard`
 
 ```
-/unguard            # show current bypass state
-/unguard read       # toggle the read(조회) bypass
-/unguard write      # toggle the write(변경·삭제·ssh) bypass
-/unguard all        # toggle both
+/unguard            # show current bypass state (with remaining time if timed)
+/unguard read       # toggle the read(조회) bypass for this session
+/unguard write      # toggle the write(변경·삭제·ssh) bypass for this session
+/unguard all        # toggle both for this session
+/unguard write 30m  # write bypass for 30 minutes — survives restarts, then re-arms
+/unguard all 2h     # both bypasses for 2 hours (also: 45s; bare number = minutes; max 24h)
+/unguard read persist   # read bypass until explicitly turned off
 /unguard off        # clear both (re-enable the guard now)
 ```
 
@@ -59,7 +65,10 @@ can't turn the guard off on its own — only you can.
 - `ssh` and `scp` are always **write** (a remote shell / file transfer can't be
   classified), and `bq query` is **write** (it can run DML/DDL).
 - Bypass flags live at `~/.claude/remote-guard/`. `SessionStart` fires on
-  startup / resume / clear / compact, each of which resets the bypass.
+  startup / resume / clear / compact, each of which resets session-scoped
+  bypasses. Timed bypasses expire on their own (checked on every guarded
+  command, so mid-session expiry re-arms the guard immediately); `persist`
+  bypasses survive until `/unguard off`.
 
 ## Optional: status-line indicator
 

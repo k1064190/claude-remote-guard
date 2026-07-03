@@ -77,28 +77,56 @@
     nav.timeline {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
       margin: 0 0 2.5rem;
       padding: 0.5rem 0;
+    }
+    .node-row {
+      display: flex;
+      align-items: center;
+      flex: 1;
+    }
+    .node-row:last-child {
+      flex: 0 0 auto;
     }
     .node {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 0.5rem;
+      flex: 0 0 auto;
     }
     .node .dot {
       width: 1.15rem;
       height: 1.15rem;
       border-radius: 50%;
+      background: var(--muted);
+      border: 3px solid var(--muted);
+    }
+    .node .dot.current {
       background: var(--accent);
-      border: 3px solid var(--accent);
+      border-color: var(--accent);
       box-shadow: 0 0 0 4px rgba(31, 111, 107, 0.14);
+    }
+    .node .dot.future {
+      background: transparent;
+      border-color: var(--accent);
     }
     .node .node-label {
       font-size: 0.85rem;
       font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .node .node-label.current {
       color: var(--accent);
+    }
+    .connector {
+      height: 2px;
+      background: var(--border);
+      flex: 1;
+      margin: 0 0.6rem;
+      align-self: flex-start;
+      margin-top: 0.57rem;
     }
     section.stage h2 {
       margin: 0 0 0.35rem;
@@ -205,15 +233,24 @@
     </header>
 
     <nav class="timeline" aria-label="단계 타임라인">
-      <div class="node">
-        <span class="dot"></span>
-        <span class="node-label">1단계</span>
+      <div class="node-row">
+        <div class="node">
+          <span class="dot current"></span>
+          <span class="node-label current">1단계</span>
+        </div>
+        <div class="connector"></div>
+      </div>
+      <div class="node-row">
+        <div class="node">
+          <span class="dot future"></span>
+          <span class="node-label">2단계</span>
+        </div>
       </div>
     </nav>
 
     <section class="stage">
       <h2>1단계</h2>
-      <p class="stage-summary">컨테이너 레지스트리 push/login 가드.</p>
+      <p class="stage-summary">기존 CLI 화이트리스트를 빠져나가던 컨테이너 레지스트리 push/login을 잡아내도록 가드 훅을 확장했습니다.</p>
 
       <div class="grid">
         <article class="card">
@@ -227,8 +264,8 @@
               <code>az</code>, <code>kubectl</code>, <code>ssh</code>,
               <code>scp</code>, <code>terraform</code>)에 대해서만 동작했습니다.
               레지스트리로의 <code>docker push</code>는 그 목록에 없었기 때문에
-              승인 프롬프트 없이 이미지가 push되었고, 이는 Doctor Cho가 정확히
-              겪은 빈틈입니다. 레지스트리 push는 원격 인프라에 도달하므로
+              승인 프롬프트 없이 이미지가 push될 수 있었고, 이는 Doctor Cho가
+              정확히 겪은 빈틈입니다. 레지스트리 push는 원격 인프라에 도달하므로
               마찬가지로 가드되어야 합니다.
             </p>
           </div>
@@ -236,19 +273,24 @@
           <div class="field">
             <h4>무엇을</h4>
             <p>
-              docker / podman / nerdctl(그리고 하이픈이 들어간 docker-compose /
-              podman-compose v1 바이너리)이 이제 가드되지만, 레지스트리로 향하는
-              작업에 한해서만이며 write로 분류됩니다:
+              <code>docker</code> / <code>podman</code> / <code>nerdctl</code>
+              (그리고 하이픈이 들어간 <code>docker-compose</code> /
+              <code>podman-compose</code> v1 바이너리)이 이제 가드되지만,
+              레지스트리로 향하는 작업에 한해서만이며 <strong>write</strong>로
+              분류됩니다:
             </p>
             <ul>
-              <li>push / publish — <code>image push</code>, <code>manifest push</code>, compose <code>push</code>/<code>publish</code> 포함</li>
-              <li>buildx 레지스트리 익스포터 — <code>--push</code> 약식 표기와 그에 대응하는 <code>--output type=registry</code> / <code>--output=type=image,…,push=true</code> / <code>-o type=registry</code></li>
-              <li>login / logout</li>
+              <li><code>push</code> / <code>publish</code> — <code>image push</code>, <code>manifest push</code>, compose <code>push</code>/<code>publish</code> 포함</li>
+              <li>buildx 레지스트리 익스포터 / 캐시 write — <code>--push</code> 약식 표기와 <code>--output</code>/<code>-o</code>/<code>--cache-to</code>에 붙는 <code>type=registry</code> / <code>push=true</code> 형태(읽기 전용인 <code>--cache-from type=registry</code> 캐시 import는 의도적으로 가드하지 않음)</li>
+              <li><code>buildx imagetools create</code> — (멀티아키텍처) 매니페스트를 레지스트리에 게시</li>
+              <li><code>login</code> / <code>logout</code></li>
             </ul>
             <p>
-              건드리지 않은 것(Doctor Cho의 범위 결정에 따라 조용히 통과): pull,
-              search, 그리고 모든 로컬 작업(build, run, ps, images, logs, …).
-              결정에 따라 범위 밖: git push와 패키지 퍼블리싱(helm/npm/twine).
+              건드리지 않은 것(Doctor Cho의 범위 결정에 따라 조용히 통과):
+              <code>pull</code>, <code>search</code>, 그리고 모든 로컬 작업
+              (<code>build</code>, <code>run</code>, <code>ps</code>,
+              <code>images</code>, <code>logs</code>, …). 결정에 따라 범위 밖:
+              <code>git push</code>와 패키지 퍼블리싱(helm/npm/twine).
               <code>/unguard write</code> 우회는 다른 write 등급 작업과 동일하게
               이들을 다스리며, <code>/unguard read</code> 단독으로는 그렇지
               않습니다.
@@ -262,9 +304,11 @@
               매칭이라서, 로컬 docker는 프롬프트 없이 유지됩니다:
             </p>
             <ul>
-              <li><code>container_re</code> — 명령 위치의 CLI, 그다음 (image/manifest/compose 같은 중간 단어를 선택적으로 지나) 동사 push|publish|login|logout. 해당 작업은 <code>[^;|&amp;]*</code>로 같은 명령 세그먼트 안에 묶이며, 후행 경계 <code>[[:space:];|&amp;)]|$</code> 덕분에 구분자나 <code>)</code>가 뒤따라도 끝에 오는 동사가 매칭됩니다.</li>
-              <li><code>container_pushflag_re</code> / <code>container_exporter_re</code> — <code>--push</code> 약식 표기 또는 그에 대응하는 익스포터(<code>type=registry</code>, <code>push=true</code>)를 통한 buildx push로, 서브커맨드가 아니라 플래그이므로 별도로 매칭됩니다.</li>
-              <li>scan이 bash 줄 연속(백슬래시-개행)을 접고 개행/탭을 공백으로 평탄화하므로, 여러 줄로 나뉜 명령(예: 여러 줄에 걸쳐 쪼개진 <code>docker buildx build … --push</code>)도 한 줄로 보입니다.</li>
+              <li><code>container_re</code> — 명령 위치의 CLI, 그다음 (image/manifest/compose 같은 중간 단어를 선택적으로 지나) 동사 <code>push|publish|login|logout</code>. 해당 작업은 <code>[^;|&amp;]*</code>로 같은 명령 세그먼트 안에 묶이며, 후행 경계 <code>[[:space:];|&amp;)&lt;&gt;]|$</code> 덕분에 구분자, <code>)</code>, 또는 리다이렉션(<code>&lt;</code> <code>&gt;</code>)이 뒤따라도 끝에 오는 동사가 매칭됩니다.</li>
+              <li><code>container_pushflag_re</code> — buildx의 <code>--push</code> 약식 표기(<code>--push</code>, <code>--push=true|1</code>, 단 <code>--push=false</code>는 제외)로, 서브커맨드가 아니라 플래그입니다.</li>
+              <li><code>container_exporter_re</code> — <code>--output</code>/<code>-o</code>/<code>--cache-to</code>에 묶인 레지스트리 익스포터 / 캐시-write 형태(<code>type=registry</code>, <code>push=true</code>)로, 읽기 전용인 <code>--cache-from type=registry</code> 캐시 import가 write로 오분류되지 않도록 합니다.</li>
+              <li><code>container_imagetools_re</code> — <code>buildx imagetools create</code>(매니페스트 게시).</li>
+              <li><code>scan</code>이 셸이 처리하는 방식대로 bash 줄 연속(백슬래시-개행)을 접고, 탭을 공백으로, 나머지 개행을 bash가 명령 구분자로 취급하는 대로 <code>;</code>로 바꿉니다 — 그 덕분에 여러 줄로 나뉜 <code>docker buildx build … --push</code>는 매칭되면서, 독립된 줄의 로컬 <code>docker build .</code>는 조용히 지나갑니다.</li>
             </ul>
             <p>
               탐지는 과보호 쪽으로 치우칩니다(엉뚱한 <code>echo push</code> 인자가
@@ -274,35 +318,34 @@
             <p>
               알려진 한계(수용하고 문서화함): 기존 <code>remote_re</code>와
               일관되게, 가드는 중첩된 셸(<code>bash -c "docker push …"</code>),
-              백틱/<code>$()</code> 문자열, 절대 경로 호출
-              (<code>/usr/bin/docker push</code>) 내부를 들여다보지 못합니다.
-              이를 강화하려면 컨테이너 작업에만 국한하지 않고 훅 전체에 걸쳐
-              일관되게(별도의 변경으로) 수행해야 합니다.
+              백틱/<code>$()</code> 문자열, 인용된 셸 메타문자(동사 앞 인용된
+              인자 안의 <code>;</code>/<code>|</code>/<code>&amp;</code>), 또는
+              절대 경로 호출(<code>/usr/bin/docker push</code>) 내부를 들여다보지
+              못합니다. 이를 강화하려면 컨테이너 작업에만 국한하지 않고 훅
+              전체에 걸쳐 일관되게(별도의 변경으로) 따옴표/셸을 인식하는 파싱을
+              해야 합니다.
             </p>
-            <p>
-              리뷰 루프: code-reviewer-pro 서브에이전트는 critical 0 / warning 0
-              / 문서성 제안 2건을 찾았습니다. codex(gpt-5.5, high)는 실제 critical
-              과소보호를 찾았습니다 — 마지막 토큰인 동사 바로 뒤에 공백 없이
-              ;/&amp;/|/)가 붙는 경우를 놓쳤고, 후행 경계를 넓혀 수정했습니다.
-              antigravity(Gemini 3.1 Pro High)는 범위 내의 현실적인 누락 2건 —
-              여러 줄 명령과 docker-compose v1 바이너리 — 을 찾았고 둘 다
-              수정했습니다. Codex GitHub 봇(PR #1)이 과소보호 3건을 추가로
-              찾았고 모두 수정했습니다: (P1) <code>--push</code>만 보던 매처가
-              놓친 buildx 익스포터 push(<code>--output type=registry</code> /
-              <code>push=true</code>); (P2) 백슬래시가 CLI에 붙어버린
-              <code>docker\&lt;newline&gt;push</code> 연속; (P2) 레지스트리
-              write로서의 <code>docker compose publish</code>. 모든 수정에 대해
-              회귀 테스트를 추가했고, 전체 스위트가 통과합니다(51/51).
-            </p>
+          </div>
+
+          <div class="field">
+            <h4>리뷰 루프</h4>
+            <ul>
+              <li><strong>code-reviewer-pro 서브에이전트:</strong> critical 0 / warning 0 / 문서성 제안 2건. 코드 변경 불필요.</li>
+              <li><strong>codex (gpt-5.5, high):</strong> 실제 critical 과소보호를 찾았습니다 — 마지막 토큰인 동사 바로 뒤에 공백 없이 <code>;</code>/<code>&amp;</code>/<code>|</code>/<code>)</code>가 붙는 경우(<code>docker compose push;…</code>, <code>docker logout&amp;&amp;…</code>, <code>(docker login)</code>)를 놓쳤고, 후행 경계를 넓혀 수정했습니다. 인용된 구분자와 <code>run … push</code> 오탐 지적은 반려(무시할 수준이거나 과보호로 수용).</li>
+              <li><strong>antigravity (Gemini 3.1 Pro High):</strong> 범위 내의 현실적인 누락 2건 — 여러 줄 명령과 <code>docker-compose</code> v1 바이너리 — 을 찾았고 둘 다 수정했습니다(<code>scan</code> 평탄화 + 대안 추가). 절대 경로 / <code>bash -c</code> / printf 개행 지적은 반려(훅 전체에 걸친 기존 경계이며, 대상 플랫폼은 GNU grep). 분류/우회 로직은 정확하다고 확인.</li>
+              <li><strong>Codex GitHub 봇 (PR #1, 1차):</strong> 과소보호 3건, 모두 수정 — <code>--push</code>만 보던 매처가 놓친 buildx 익스포터 push(<code>--output type=registry</code> / <code>push=true</code>); 백슬래시가 CLI에 붙어버린 <code>docker</code>-개행-<code>push</code> 연속; 레지스트리 write로서의 <code>docker compose publish</code>(<code>publish</code> 추가).</li>
+              <li><strong>Codex GitHub 봇 (PR #1, 2차):</strong> 6건 추가, 5건 수정 — 리다이렉션(<code>docker push&gt;log</code>)이 이제 토큰 경계로 처리됨; <code>buildx imagetools create</code> 매니페스트 게시가 이제 가드됨; 익스포터 매처가 <code>--output</code>/<code>-o</code>/<code>--cache-to</code>에 묶여 읽기 전용 <code>--cache-from type=registry</code>가 더 이상 플래그되지 않음; 개행이 명령 구분자로 유지됨; <code>--push=false</code>가 더 이상 프롬프트하지 않음. 인용된 셸 메타문자 파싱 지적은 반려 — 훅 전체에 걸친 휴리스틱 한계이며 이제 문서화됨.</li>
+              <li>모든 수정에 대해 회귀 테스트를 추가했고, 전체 스위트가 통과합니다(61/61).</li>
+            </ul>
           </div>
 
           <div class="field">
             <h4>코드 위치</h4>
             <ul class="codelist">
-              <li><code>scripts/guard-remote-ops.sh:27-55</code> — scan 정규화 + container_re / container_pushflag_re / container_exporter_re + is_container 탐지</li>
-              <li><code>scripts/guard-remote-ops.sh:66-67</code> — 컨테이너 작업을 write 등급으로 강제</li>
-              <li><code>scripts/guard-remote-ops.sh:83-87</code> — CLI 이름 추출 + "Container registry operation" 사유 라벨</li>
-              <li><code>tests/test-guard-remote-ops.sh</code> — 동작 테스트 51건</li>
+              <li><code>scripts/guard-remote-ops.sh:27-60</code> — scan 정규화 + container_re / container_pushflag_re / container_exporter_re / container_imagetools_re + is_container 탐지</li>
+              <li><code>scripts/guard-remote-ops.sh:72</code> — 컨테이너 작업을 write 등급으로 강제</li>
+              <li><code>scripts/guard-remote-ops.sh:88-91</code> — CLI 이름 추출 + "Container registry operation" 사유 라벨</li>
+              <li><code>tests/test-guard-remote-ops.sh</code> — 동작 테스트 61건(가드 대상, 통과 대상, 구분자, 여러 줄, compose v1/publish, buildx 익스포터/imagetools, 리다이렉션, cache-from 제외, 우회 플래그 상호작용, 회귀)</li>
               <li><code>README.md</code>, <code>.claude-plugin/plugin.json</code> — 문서/설명 정합화</li>
             </ul>
           </div>

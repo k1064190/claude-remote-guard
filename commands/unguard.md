@@ -1,6 +1,6 @@
 ---
-description: Toggle the remote/cloud approval guard for this session — read(조회) and write(위험) separately (auto-resets on restart). Usage:/unguard [read|write|all|off|status]
-argument-hint: [read|write|all|off|status]
+description: Toggle the remote/cloud approval guard — read(조회) and write(위험) separately. Session-scoped by default (resets on restart); add a duration (30m/2h) or persist to survive restarts. Usage:/unguard [read|write|all|off|status] [30m|2h|persist]
+argument-hint: [read|write|all|off|status] [30m|2h|persist]
 allowed-tools: Bash
 disable-model-invocation: true
 ---

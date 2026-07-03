@@ -77,28 +77,56 @@
     nav.timeline {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
       margin: 0 0 2.5rem;
       padding: 0.5rem 0;
+    }
+    .node-row {
+      display: flex;
+      align-items: center;
+      flex: 1;
+    }
+    .node-row:last-child {
+      flex: 0 0 auto;
     }
     .node {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 0.5rem;
+      flex: 0 0 auto;
     }
     .node .dot {
       width: 1.15rem;
       height: 1.15rem;
       border-radius: 50%;
+      background: var(--muted);
+      border: 3px solid var(--muted);
+    }
+    .node .dot.current {
       background: var(--accent);
-      border: 3px solid var(--accent);
+      border-color: var(--accent);
       box-shadow: 0 0 0 4px rgba(31, 111, 107, 0.14);
+    }
+    .node .dot.future {
+      background: transparent;
+      border-color: var(--accent);
     }
     .node .node-label {
       font-size: 0.85rem;
       font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .node .node-label.current {
       color: var(--accent);
+    }
+    .connector {
+      height: 2px;
+      background: var(--border);
+      flex: 1;
+      margin: 0 0.6rem;
+      align-self: flex-start;
+      margin-top: 0.57rem;
     }
     section.stage h2 {
       margin: 0 0 0.35rem;
@@ -205,15 +233,24 @@
     </header>
 
     <nav class="timeline" aria-label="Stage timeline">
-      <div class="node">
-        <span class="dot"></span>
-        <span class="node-label">Stage 1</span>
+      <div class="node-row">
+        <div class="node">
+          <span class="dot current"></span>
+          <span class="node-label current">Stage 1</span>
+        </div>
+        <div class="connector"></div>
+      </div>
+      <div class="node-row">
+        <div class="node">
+          <span class="dot future"></span>
+          <span class="node-label">Stage 2</span>
+        </div>
       </div>
     </nav>
 
     <section class="stage">
       <h2>Stage 1</h2>
-      <p class="stage-summary">Guard container-registry push/login.</p>
+      <p class="stage-summary">Extended the guard hook to catch container-registry pushes and logins, which had been slipping through the existing CLI whitelist.</p>
 
       <div class="grid">
         <article class="card">
@@ -236,19 +273,23 @@
           <div class="field">
             <h4>What</h4>
             <p>
-              docker / podman / nerdctl (and the hyphenated docker-compose /
-              podman-compose v1 binaries) are now guarded, but only for
-              registry-bound operations, classified write:
+              <code>docker</code> / <code>podman</code> / <code>nerdctl</code>
+              (and the hyphenated <code>docker-compose</code> /
+              <code>podman-compose</code> v1 binaries) are now guarded, but only
+              for registry-bound operations, classified <strong>write</strong>:
             </p>
             <ul>
-              <li>push / publish — incl. <code>image push</code>, <code>manifest push</code>, compose <code>push</code>/<code>publish</code></li>
-              <li>buildx registry exporters — the <code>--push</code> shorthand and its <code>--output type=registry</code> / <code>--output=type=image,…,push=true</code> / <code>-o type=registry</code> equivalents</li>
-              <li>login / logout</li>
+              <li><code>push</code> / <code>publish</code> — incl. <code>image push</code>, <code>manifest push</code>, compose <code>push</code>/<code>publish</code></li>
+              <li>buildx registry exporters / cache writes — the <code>--push</code> shorthand and the <code>type=registry</code> / <code>push=true</code> forms on <code>--output</code>/<code>-o</code>/<code>--cache-to</code> (a read-only <code>--cache-from type=registry</code> import is deliberately not guarded)</li>
+              <li><code>buildx imagetools create</code> — publishing a (multi-arch) manifest to a registry</li>
+              <li><code>login</code> / <code>logout</code></li>
             </ul>
             <p>
-              Left untouched (pass silently, per Doctor Cho's scoping): pull,
-              search, and all local work (build, run, ps, images, logs, …). Out
-              of scope by decision: git push and package publishing
+              Left untouched (pass silently, per Doctor Cho's scoping):
+              <code>pull</code>, <code>search</code>, and all local work
+              (<code>build</code>, <code>run</code>, <code>ps</code>,
+              <code>images</code>, <code>logs</code>, …). Out of scope by
+              decision: <code>git push</code> and package publishing
               (helm/npm/twine). The <code>/unguard write</code> bypass governs
               these the same as any other write-class op;
               <code>/unguard read</code> alone does not.
@@ -262,9 +303,11 @@
               <code>remote_re</code>), so local docker stays prompt-free:
             </p>
             <ul>
-              <li><code>container_re</code> — CLI in command position, then (optionally past intermediate words like image/manifest/compose) the verb push|publish|login|logout. The op is held to the same command segment via <code>[^;|&amp;]*</code>; the trailing boundary <code>[[:space:];|&amp;)]|$</code> lets a terminal verb match even when a separator or <code>)</code> follows.</li>
-              <li><code>container_pushflag_re</code> / <code>container_exporter_re</code> — buildx pushes via the <code>--push</code> shorthand or its exporter equivalents (<code>type=registry</code>, <code>push=true</code>), matched separately since they are flags, not subcommands.</li>
-              <li>scan folds bash line continuations (backslash-newline) and flattens newlines/tabs to spaces, so a multi-line command (e.g. <code>docker buildx build … --push</code> split across lines) is seen on one line.</li>
+              <li><code>container_re</code> — CLI in command position, then (optionally past intermediate words like <code>image</code>/<code>manifest</code>/<code>compose</code>) the verb <code>push|publish|login|logout</code>. The op is held to the same command segment via <code>[^;|&amp;]*</code>; the trailing boundary <code>[[:space:];|&amp;)&lt;&gt;]|$</code> lets a terminal verb match even when a separator, <code>)</code>, or a redirection (<code>&lt;</code> <code>&gt;</code>) follows.</li>
+              <li><code>container_pushflag_re</code> — the buildx <code>--push</code> shorthand (<code>--push</code>, <code>--push=true|1</code>, but not <code>--push=false</code>), a flag, not a subcommand.</li>
+              <li><code>container_exporter_re</code> — registry exporter / cache-write forms (<code>type=registry</code>, <code>push=true</code>) tied to <code>--output</code>/<code>-o</code>/<code>--cache-to</code>, so a read-only <code>--cache-from type=registry</code> cache import is not misclassified as a write.</li>
+              <li><code>container_imagetools_re</code> — <code>buildx imagetools create</code> (manifest publish).</li>
+              <li><code>scan</code> folds bash line continuations (backslash-newline) the way the shell does, turns tabs into spaces, and turns other newlines into <code>;</code> so they act as the command separators bash treats them as — keeping a multi-line <code>docker buildx build … --push</code> matched while a local <code>docker build .</code> on its own line stays quiet.</li>
             </ul>
             <p>
               Detection biases toward over-protection (a stray
@@ -272,39 +315,37 @@
               never under-protect.
             </p>
             <p>
-              Known limitations (accepted, documented): Consistent with the
+              Known limitations (accepted, documented): consistent with the
               pre-existing <code>remote_re</code>, the guard does not see into
               nested shells (<code>bash -c "docker push …"</code>),
-              backtick/<code>$()</code> strings, or absolute-path invocations
-              (<code>/usr/bin/docker push</code>). Hardening those would have to
-              be done uniformly across the whole hook (a separate change), not
-              just for container ops.
+              backtick/<code>$()</code> strings, quoted shell metacharacters (a
+              <code>;</code>/<code>|</code>/<code>&amp;</code> inside a quoted
+              arg before the verb), or absolute-path invocations
+              (<code>/usr/bin/docker push</code>). These would need
+              quote/shell-aware parsing done uniformly across the whole hook (a
+              separate change), not just for container ops.
             </p>
-            <p>
-              Review loop: code-reviewer-pro subagent found 0 critical / 0
-              warning / 2 doc-only suggestions. codex (gpt-5.5, high) found a real
-              critical under-protection — a verb that is the last token followed
-              directly by ;/&amp;/|/) (no space) was missed; fixed by widening the
-              trailing boundary. antigravity (Gemini 3.1 Pro High) found two
-              realistic in-scope misses — multi-line commands and the
-              docker-compose v1 binary; both fixed. Codex GitHub bot (PR #1) found
-              three more under-protections, all fixed: (P1) buildx exporter pushes
-              (<code>--output type=registry</code> / <code>push=true</code>) that
-              the <code>--push</code>-only matcher missed; (P2) a
-              <code>docker\&lt;newline&gt;push</code> continuation where the
-              backslash stuck to the CLI; (P2) <code>docker compose publish</code>
-              as a registry write. Regression tests added for every fix; full
-              suite green (51/51).
-            </p>
+          </div>
+
+          <div class="field">
+            <h4>Review loop</h4>
+            <ul>
+              <li><strong>code-reviewer-pro subagent:</strong> 0 critical / 0 warning / 2 doc-only suggestions. No code change required.</li>
+              <li><strong>codex (gpt-5.5, high):</strong> found a real critical under-protection — a verb that is the last token followed directly by <code>;</code>/<code>&amp;</code>/<code>|</code>/<code>)</code> (no space) was missed (<code>docker compose push;…</code>, <code>docker logout&amp;&amp;…</code>, <code>(docker login)</code>). Fixed by widening the trailing boundary. Pushed back on its quoted-separator and <code>run … push</code> false-positive notes (negligible / accepted over-protection).</li>
+              <li><strong>antigravity (Gemini 3.1 Pro High):</strong> found two realistic in-scope misses — multi-line commands and the <code>docker-compose</code> v1 binary. Both fixed (<code>scan</code> flatten + alternation). Pushed back on absolute-path / <code>bash -c</code> / printf-newline notes (pre-existing whole-hook boundary; target platform is GNU grep). Confirmed the classification/bypass logic is correct.</li>
+              <li><strong>Codex GitHub bot (PR #1, round 1):</strong> three under-protections, all fixed — buildx exporter pushes (<code>--output type=registry</code> / <code>push=true</code>) that the <code>--push</code>-only matcher missed; a <code>docker</code>-newline-<code>push</code> continuation where the backslash stuck to the CLI; <code>docker compose publish</code> as a registry write (added <code>publish</code>).</li>
+              <li><strong>Codex GitHub bot (PR #1, round 2):</strong> six more, five fixed — redirections (<code>docker push&gt;log</code>) now treated as token boundaries; <code>buildx imagetools create</code> manifest publish now guarded; the exporter matcher tied to <code>--output</code>/<code>-o</code>/<code>--cache-to</code> so a read-only <code>--cache-from type=registry</code> is no longer flagged; newlines kept as command separators; <code>--push=false</code> no longer prompts. Pushed back on quoted-shell-metacharacter parsing — a whole-hook heuristic limitation, now documented.</li>
+              <li>Regression tests added for every fix; full suite green (61/61).</li>
+            </ul>
           </div>
 
           <div class="field">
             <h4>Code locations</h4>
             <ul class="codelist">
-              <li><code>scripts/guard-remote-ops.sh:27-55</code> — scan normalization + container_re / container_pushflag_re / container_exporter_re + is_container detection</li>
-              <li><code>scripts/guard-remote-ops.sh:66-67</code> — container ops forced to write class</li>
-              <li><code>scripts/guard-remote-ops.sh:83-87</code> — CLI-name extraction + "Container registry operation" reason label</li>
-              <li><code>tests/test-guard-remote-ops.sh</code> — 51 behavior tests</li>
+              <li><code>scripts/guard-remote-ops.sh:27-60</code> — scan normalization + container_re / container_pushflag_re / container_exporter_re / container_imagetools_re + is_container detection</li>
+              <li><code>scripts/guard-remote-ops.sh:72</code> — container ops forced to write class</li>
+              <li><code>scripts/guard-remote-ops.sh:88-91</code> — CLI-name extraction + "Container registry operation" reason label</li>
+              <li><code>tests/test-guard-remote-ops.sh</code> — 61 behavior tests (guarded ops, pass-through, separators, multi-line, compose v1/publish, buildx exporters/imagetools, redirections, cache-from exclusion, bypass-flag interaction, regression)</li>
               <li><code>README.md</code>, <code>.claude-plugin/plugin.json</code> — doc/description aligned</li>
             </ul>
           </div>

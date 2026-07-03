@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "rm -f \"$HOME/.claude/remote-guard/bypass-read\" \"$HOME/.claude/remote-guard/bypass-write\""
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/guard-remote-session-reset.sh"
           }
         ]
       }
