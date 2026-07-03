@@ -88,7 +88,9 @@ fi
 flag_active() {
   local v
   [ -f "$1" ] || return 1
-  v=$(cat "$1" 2>/dev/null)
+  # A failed read means the flag vanished between the check and the read --
+  # treat as inactive rather than letting '' read as an active session flag.
+  v=$(cat "$1" 2>/dev/null) || return 1
   case "$v" in
     ''|persist) return 0 ;;
     *[!0-9]*)   rm -f "$1"; return 1 ;;

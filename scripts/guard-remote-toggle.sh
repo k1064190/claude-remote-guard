@@ -74,7 +74,7 @@ fi
 state() {
   local v rem
   [ -f "$1" ] || { echo OFF; return; }
-  v=$(cat "$1" 2>/dev/null || true)
+  v=$(cat "$1" 2>/dev/null) || { echo OFF; return; }
   case "$v" in
     '')      echo "ON (this session)" ;;
     persist) echo "ON (persist)" ;;
