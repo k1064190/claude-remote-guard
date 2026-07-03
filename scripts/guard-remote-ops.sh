@@ -80,10 +80,23 @@ else
   kind=write
 fi
 
-# Session-scoped bypass flags set by /unguard; a SessionStart hook clears them each
-# new session. read flag -> skip prompt for read-only; write flag -> skip for write.
-if [ "$kind" = read ]  && [ -f "$read_flag"  ]; then exit 0; fi
-if [ "$kind" = write ] && [ -f "$write_flag" ]; then exit 0; fi
+# Bypass flags set by /unguard. The file contents encode the mode (see
+# guard-remote-toggle.sh): empty = session-scoped (a SessionStart hook clears it),
+# digits = expiry epoch (active until then, surviving restarts), "persist" = active
+# until /unguard off. Anything else is treated as inactive so the guard never
+# under-protects; expired/unknown flags are cleaned up here.
+flag_active() {
+  local v
+  [ -f "$1" ] || return 1
+  v=$(cat "$1" 2>/dev/null)
+  case "$v" in
+    ''|persist) return 0 ;;
+    *[!0-9]*)   rm -f "$1"; return 1 ;;
+    *) if [ "$(date +%s)" -lt "$v" ]; then return 0; else rm -f "$1"; return 1; fi ;;
+  esac
+}
+if [ "$kind" = read ]  && flag_active "$read_flag";  then exit 0; fi
+if [ "$kind" = write ] && flag_active "$write_flag"; then exit 0; fi
 
 if [ "$is_container" = 1 ]; then
   cli=$(printf '%s' "$scan" | grep -Eio '(^|[[:space:]]|[;|&(=])(docker-compose|podman-compose|docker|podman|nerdctl)[[:space:]]' \
