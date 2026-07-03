@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Remote/Cloud Guard — Staged plan progress</title>
+  <style>
+    :root {
+      --bg: #f7f7f5;
+      --card: #fcfcfb;
+      --border: #e2e2dd;
+      --text: #20242a;
+      --muted: #6a7079;
+      --accent: #1f6f6b;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+    header.page-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    header.page-header h1 {
+      margin: 0;
+      font-size: 1.65rem;
+      letter-spacing: -0.01em;
+    }
+    header.page-header .subtitle {
+      margin: 0.25rem 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    nav.lang {
+      font-size: 0.9rem;
+      color: var(--muted);
+      white-space: nowrap;
+      padding-top: 0.35rem;
+    }
+    nav.lang a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    nav.lang a:hover {
+      text-decoration: underline;
+    }
+    nav.lang .current {
+      color: var(--muted);
+    }
+    nav.lang .sep {
+      margin: 0 0.45rem;
+      color: var(--border);
+    }
+    nav.timeline {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 0 0 2.5rem;
+      padding: 0.5rem 0;
+    }
+    .node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .node .dot {
+      width: 1.15rem;
+      height: 1.15rem;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 3px solid var(--accent);
+      box-shadow: 0 0 0 4px rgba(31, 111, 107, 0.14);
+    }
+    .node .node-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    section.stage h2 {
+      margin: 0 0 0.35rem;
+      font-size: 1.3rem;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
+    section.stage .stage-summary {
+      margin: 0 0 1.5rem;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+    article.card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem 1.5rem 1.75rem;
+    }
+    article.card h3 {
+      margin: 0 0 1rem;
+      font-size: 1.15rem;
+      letter-spacing: -0.01em;
+    }
+    .field {
+      margin-bottom: 1.1rem;
+    }
+    .field:last-child {
+      margin-bottom: 0;
+    }
+    .field h4 {
+      margin: 0 0 0.35rem;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+    }
+    .field p {
+      margin: 0 0 0.6rem;
+    }
+    .field p:last-child {
+      margin-bottom: 0;
+    }
+    .field ul {
+      margin: 0.3rem 0 0.6rem;
+      padding-left: 1.2rem;
+    }
+    .field ul:last-child {
+      margin-bottom: 0;
+    }
+    .field li {
+      margin-bottom: 0.3rem;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.85em;
+      background: #eef1ef;
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+      color: #243b39;
+    }
+    .codelist {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .codelist li {
+      margin-bottom: 0.45rem;
+      line-height: 1.5;
+    }
+    .codelist li:last-child {
+      margin-bottom: 0;
+    }
+    .retro {
+      font-style: italic;
+      color: #353b42;
+    }
+    @media (max-width: 720px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      header.page-header {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="page-header">
+      <div>
+        <h1>Remote/Cloud Guard</h1>
+        <p class="subtitle">Staged plan progress</p>
+      </div>
+      <nav class="lang" aria-label="Language">
+        <span class="current">EN</span>
+        <span class="sep">|</span>
+        <a href="index.ko.html" lang="ko">한국어</a>
+      </nav>
+    </header>
+
+    <nav class="timeline" aria-label="Stage timeline">
+      <div class="node">
+        <span class="dot"></span>
+        <span class="node-label">Stage 1</span>
+      </div>
+    </nav>
+
+    <section class="stage">
+      <h2>Stage 1</h2>
+      <p class="stage-summary">Guard container-registry push/login.</p>
+
+      <div class="grid">
+        <article class="card">
+          <h3>Container Registry Guard</h3>
+
+          <div class="field">
+            <h4>Why</h4>
+            <p>
+              The guard hook only triggered on a fixed CLI whitelist
+              (<code>gcloud</code>, <code>gsutil</code>, <code>bq</code>,
+              <code>aws</code>, <code>az</code>, <code>kubectl</code>,
+              <code>ssh</code>, <code>scp</code>, <code>terraform</code>).
+              <code>docker push</code> to a registry was not in that list, so an
+              image was pushed without the approval prompt — the exact gap Doctor
+              Cho hit. Registry pushes reach remote infrastructure and must be
+              guarded too.
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>What</h4>
+            <p>
+              docker / podman / nerdctl (and the hyphenated docker-compose /
+              podman-compose v1 binaries) are now guarded, but only for
+              registry-bound operations, classified write:
+            </p>
+            <ul>
+              <li>push / publish — incl. <code>image push</code>, <code>manifest push</code>, compose <code>push</code>/<code>publish</code></li>
+              <li>buildx registry exporters — the <code>--push</code> shorthand and its <code>--output type=registry</code> / <code>--output=type=image,…,push=true</code> / <code>-o type=registry</code> equivalents</li>
+              <li>login / logout</li>
+            </ul>
+            <p>
+              Left untouched (pass silently, per Doctor Cho's scoping): pull,
+              search, and all local work (build, run, ps, images, logs, …). Out
+              of scope by decision: git push and package publishing
+              (helm/npm/twine). The <code>/unguard write</code> bypass governs
+              these the same as any other write-class op;
+              <code>/unguard read</code> alone does not.
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>How</h4>
+            <p>
+              Subcommand-aware matching (unlike the CLI-only
+              <code>remote_re</code>), so local docker stays prompt-free:
+            </p>
+            <ul>
+              <li><code>container_re</code> — CLI in command position, then (optionally past intermediate words like image/manifest/compose) the verb push|publish|login|logout. The op is held to the same command segment via <code>[^;|&amp;]*</code>; the trailing boundary <code>[[:space:];|&amp;)]|$</code> lets a terminal verb match even when a separator or <code>)</code> follows.</li>
+              <li><code>container_pushflag_re</code> / <code>container_exporter_re</code> — buildx pushes via the <code>--push</code> shorthand or its exporter equivalents (<code>type=registry</code>, <code>push=true</code>), matched separately since they are flags, not subcommands.</li>
+              <li>scan folds bash line continuations (backslash-newline) and flattens newlines/tabs to spaces, so a multi-line command (e.g. <code>docker buildx build … --push</code> split across lines) is seen on one line.</li>
+            </ul>
+            <p>
+              Detection biases toward over-protection (a stray
+              <code>echo push</code> arg may prompt) because the cardinal rule is
+              never under-protect.
+            </p>
+            <p>
+              Known limitations (accepted, documented): Consistent with the
+              pre-existing <code>remote_re</code>, the guard does not see into
+              nested shells (<code>bash -c "docker push …"</code>),
+              backtick/<code>$()</code> strings, or absolute-path invocations
+              (<code>/usr/bin/docker push</code>). Hardening those would have to
+              be done uniformly across the whole hook (a separate change), not
+              just for container ops.
+            </p>
+            <p>
+              Review loop: code-reviewer-pro subagent found 0 critical / 0
+              warning / 2 doc-only suggestions. codex (gpt-5.5, high) found a real
+              critical under-protection — a verb that is the last token followed
+              directly by ;/&amp;/|/) (no space) was missed; fixed by widening the
+              trailing boundary. antigravity (Gemini 3.1 Pro High) found two
+              realistic in-scope misses — multi-line commands and the
+              docker-compose v1 binary; both fixed. Codex GitHub bot (PR #1) found
+              three more under-protections, all fixed: (P1) buildx exporter pushes
+              (<code>--output type=registry</code> / <code>push=true</code>) that
+              the <code>--push</code>-only matcher missed; (P2) a
+              <code>docker\&lt;newline&gt;push</code> continuation where the
+              backslash stuck to the CLI; (P2) <code>docker compose publish</code>
+              as a registry write. Regression tests added for every fix; full
+              suite green (51/51).
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>Code locations</h4>
+            <ul class="codelist">
+              <li><code>scripts/guard-remote-ops.sh:27-55</code> — scan normalization + container_re / container_pushflag_re / container_exporter_re + is_container detection</li>
+              <li><code>scripts/guard-remote-ops.sh:66-67</code> — container ops forced to write class</li>
+              <li><code>scripts/guard-remote-ops.sh:83-87</code> — CLI-name extraction + "Container registry operation" reason label</li>
+              <li><code>tests/test-guard-remote-ops.sh</code> — 51 behavior tests</li>
+              <li><code>README.md</code>, <code>.claude-plugin/plugin.json</code> — doc/description aligned</li>
+            </ul>
+          </div>
+
+          <div class="field">
+            <h4>Retrospective</h4>
+            <p class="retro">
+              The subcommand-aware approach kept local docker noise-free while
+              closing the push gap. The adversarial review pass earned its keep:
+              the three review passes (local + two subagents) plus the Codex
+              GitHub bot each caught genuine silent-bypasses that the happy-path
+              tests didn't — registry writes have many spellings (--push,
+              exporter flags, compose publish). Carry forward: enumerate every
+              spelling of a remote-write verb, and when a matcher needs two tokens
+              on one line, fold continuations up front.
+            </p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
