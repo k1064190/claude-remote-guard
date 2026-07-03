@@ -34,7 +34,14 @@ a flag deleted between `[ -f ]` and `cat` reads as `''` → wrongly "session
 bypass active". Fixed in `flag_active()` and `state()` (`cat … || return
 inactive`, commit c1c61a7). Dismissed: same race in the session-reset script
 (outcome is still correct — file ends up deleted) and an extra-argument
-usage warning (out of scope). Codex PR review runs on the PR.
+usage warning (out of scope).
+
+Codex GitHub bot (PR #2, round 1) found three real issues, all **fixed**
+(commit b32de9d): (P2) an overflow-sized duration silently bypassed the 24h
+cap — digit length now capped before arithmetic; (P3) leading-zero durations
+parsed as octal (`010m` = 8min) — forced base 10; (P3) flipping a stale
+expired flag only deleted it (needed two `/unguard`s) — flip/`all` now treat
+expired/unrecognized flags as OFF. Round 2: clean ("no major issues").
 
 **Retrospective** — Encoding the mode in flag contents kept the old empty-file
 format valid, so everything stayed backward compatible with no migration.

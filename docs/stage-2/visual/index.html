@@ -307,6 +307,16 @@
               up deleted) and an extra-argument usage warning (out of scope).
               Codex PR review runs on the PR.
             </p>
+            <p>
+              Codex GitHub bot (PR #2, round 1) found three real issues, all
+              fixed (commit <code>b32de9d</code>): an overflow-sized duration
+              silently bypassed the 24h cap — digit length now capped before
+              arithmetic; leading-zero durations parsed as octal
+              (<code>010m</code> = 8min) — forced base 10; flipping a stale
+              expired flag only deleted it (needed two <code>/unguard</code>s)
+              — flip/<code>all</code> now treat expired/unrecognized flags as
+              OFF. Round 2: clean ("no major issues").
+            </p>
           </div>
 
           <div class="field">
