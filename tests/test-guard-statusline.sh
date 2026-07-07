@@ -32,6 +32,7 @@ eq() { [ "$1" = "$2" ] || { printf '  want=[%s] got=[%s]\n' "$1" "$2" >&2; retur
 wrap()  { printf '%s' "${2:-}" | HOME="$TEST_HOME" bash "$WRAP"; }   # wrap <_> <stdin>
 setup() { HOME="$TEST_HOME" bash "$SETUP" "$@"; }
 scmd()  { jq -r '.statusLine.command // ""' "$settings" 2>/dev/null; }
+perms() { stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1" 2>/dev/null; }
 reset_state() { rm -rf "$guard_dir"; rm -f "$settings"; mkdir -p "$guard_dir"; }
 
 # ---- wrapper: guard indicator only (no inner status line) -------------------
@@ -43,6 +44,15 @@ ok 'write bypass shown'                  eq '🔓 guard: W bypass'   "$(wrap _ '
 ok 'read+write bypass shown'             eq '🔓 guard: RW bypass'  "$(wrap _ '')"
 rm -f "$guard_dir/bypass-write"
 ok 'read-only bypass shown'              eq '🔓 guard: R bypass'   "$(wrap _ '')"
+
+# flag CONTENTS decide the state (mirrors the guard), not mere file existence
+reset_state
+printf '%s' "$(( $(date +%s) - 60 ))"   > "$guard_dir/bypass-write"   # expired epoch
+ok 'expired timed bypass reads as armed' eq '🔒 guard: armed'      "$(wrap _ '')"
+printf '%s' "$(( $(date +%s) + 3600 ))" > "$guard_dir/bypass-write"   # future epoch
+ok 'unexpired timed bypass shown'        eq '🔓 guard: W bypass'   "$(wrap _ '')"
+printf 'persist'                        > "$guard_dir/bypass-read"    # permanent
+ok 'persist bypass shown'                eq '🔓 guard: RW bypass'  "$(wrap _ '')"
 
 # ---- wrapper: composes on top of an inner status line -----------------------
 reset_state
@@ -60,11 +70,14 @@ ok 'empty inner -> guard only'           eq '🔒 guard: armed'      "$(wrap _ '
 
 # ---- setup: install wraps the existing status line --------------------------
 reset_state
-printf '{"statusLine":{"type":"command","command":"echo BASE"},"other":"keep"}\n' > "$settings"
+printf '{"statusLine":{"type":"command","command":"echo BASE","padding":0},"other":"keep"}\n' > "$settings"
 setup install >/dev/null
 ok 'install repoints statusLine to wrapper'  eq "bash \"$wrapper_dst\"" "$(scmd)"
 ok 'install preserves other settings keys'   eq 'keep' "$(jq -r '.other' "$settings")"
+ok 'install preserves sibling statusLine key' eq '0' "$(jq -r '.statusLine.padding' "$settings")"
 ok 'install records inner command'           eq 'echo BASE' "$(cat "$guard_dir/statusline-inner")"
+ok 'inner command backup is owner-only'      eq '600' "$(perms "$guard_dir/statusline-inner")"
+ok 'inner object backup is owner-only'       eq '600' "$(perms "$guard_dir/statusline-inner.json")"
 ok 'install copies executable wrapper'       test -x "$wrapper_dst"
 ok 'installed wrapper composes base + guard' eq $'BASE\n🔒 guard: armed' "$(wrap _ '')"
 
@@ -134,6 +147,23 @@ ok 'install through symlink preserves keys'    eq 'v' "$(jq -r '.k' "$real")"
 setup uninstall >/dev/null
 ok 'uninstall keeps settings a symlink'        test -L "$settings"
 ok 'uninstall restores real target'            eq 'echo BASE' "$(jq -r '.statusLine.command' "$real")"
+
+# ---- install warns when a project/local statusLine would shadow it ----------
+reset_state
+proj=$(mktemp -d)
+mkdir -p "$proj/.claude"
+printf '{"statusLine":{"type":"command","command":"echo PROJ"}}\n' > "$proj/.claude/settings.json"
+sh_out="$(cd "$proj" && HOME="$TEST_HOME" bash "$SETUP" install 2>&1)"
+ok 'warns on project statusLine shadow' \
+   sh -c "printf '%s' \"\$1\" | grep -q 'overrides the user-level one'" _ "$sh_out"
+# a project WITHOUT a statusLine must not warn
+rm -f "$proj/.claude/settings.json"
+printf '{"other":"x"}\n' > "$proj/.claude/settings.json"
+reset_state
+sh_out="$(cd "$proj" && HOME="$TEST_HOME" bash "$SETUP" install 2>&1)"
+ok 'no warning without project statusLine' \
+   sh -c "! printf '%s' \"\$1\" | grep -q 'overrides the user-level one'" _ "$sh_out"
+rm -rf "$proj"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

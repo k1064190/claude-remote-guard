@@ -55,7 +55,15 @@ via temp + `mv` (atomic). (Med) `mv` onto a symlinked `settings.json` (stow/yadm
 the link with a regular file; `write_settings` now writes through a symlink. (Low)
 `set -- $action` word-split/glob-expanded the argument; replaced with first-token
 parameter expansion. Added stdin-newline and symlinked-settings tests (26 → 32 asserts).
-_(Codex PR bot: pending on the PR.)_
+
+Codex GitHub bot (PR #3, round 1) raised four, all addressed: (P2) the indicator
+checked only file existence, so an expired timed bypass rendered `🔓` while the guard
+was armed — both the wrapper and `status` now reuse the guard's flag-content check
+(read-only, no cleanup). (P2) captured inner-command/object backups were world-readable
+— guard dir is now `0700` and the backups `0600`. (P2) a project/local `statusLine`
+silently shadows the user-level one — `install`/`status` now warn (user chose warn +
+proceed over refuse/scope-write). (P3) install replaced the whole `.statusLine` object,
+dropping siblings like `padding` — now merges. Tests 32 → 40.
 
 **Retrospective** — Composition (record inner → wrap → restore) is what makes this
 conflict-free with any status line; the copy-to-stable-path step is the non-obvious

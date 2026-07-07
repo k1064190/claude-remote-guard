@@ -25,7 +25,7 @@ wrapper_dst="$guard_dir/statusline.sh"
 inner_cmd_file="$guard_dir/statusline-inner"        # command string for the wrapper to eval
 inner_obj_file="$guard_dir/statusline-inner.json"   # full original object for exact restore
 
-mkdir -p "$guard_dir"
+mkdir -p "$guard_dir"; chmod 700 "$guard_dir" 2>/dev/null || true
 # Double-quote the path so the command works when $HOME contains spaces; this
 # exact string is stored in settings.json and eval'd by the wrapper as the inner
 # command, so both Claude Code and the wrapper honour the quoting.
@@ -78,11 +78,41 @@ install_wrapper() {
     mv "$wrapper_dst.new" "$wrapper_dst"
 }
 
+# flag_active <file> — read-only mirror of guard-remote-ops.sh's bypass check
+# (empty/persist = active, digits = expiry epoch, else inactive) so `status`
+# agrees with what the guard enforces and never shows a stale expired bypass.
+flag_active() {
+    local v
+    [ -f "$1" ] || return 1
+    v="$(cat "$1" 2>/dev/null)" || return 1
+    case "$v" in
+        ''|persist) return 0 ;;
+        *[!0-9]*)   return 1 ;;
+        *)          [ "$(date +%s)" -lt "$v" ] ;;
+    esac
+}
+
 guard_state() {
     local gr="" gw=""
-    [ -f "$guard_dir/bypass-read" ]  && gr="R"
-    [ -f "$guard_dir/bypass-write" ] && gw="W"
+    flag_active "$guard_dir/bypass-read"  && gr="R"
+    flag_active "$guard_dir/bypass-write" && gw="W"
     if [ -n "$gr$gw" ]; then echo "🔓 bypass:$gr$gw"; else echo "🔒 armed"; fi
+}
+
+# warn_if_shadowed — Claude Code applies project/local settings above the
+# user-level file this script edits, so a statusLine defined in the current
+# project would shadow the wrapper and the guard line would never render. We
+# only touch the user file (writing the guard command into a project's
+# .claude/settings.json could leak into the repo), so warn and let the user
+# resolve it rather than silently reporting a success that has no visible effect.
+warn_if_shadowed() {
+    local f
+    for f in ".claude/settings.local.json" ".claude/settings.json"; do
+        if [ -f "$PWD/$f" ] && jq -e 'has("statusLine") and .statusLine != null' "$PWD/$f" >/dev/null 2>&1; then
+            echo "warning: $PWD/$f defines a statusLine that overrides the user-level one;"
+            echo "         the guard line will not appear in this project until that entry is removed."
+        fi
+    done
 }
 
 # The slash command hands arguments over as one word; keep only the first token,
@@ -94,6 +124,7 @@ action="${action:-status}"
 case "$action" in
 install)
     require_valid_settings
+    warn_if_shadowed
     cur="$(current_cmd)"
     if [ "$cur" = "$our_cmd" ]; then
         # Already wired — just refresh the wrapper copy (logic may have changed).
@@ -101,14 +132,19 @@ install)
         echo "remote-guard status line already installed — wrapper refreshed."
     else
         # Capture whatever is there now as the inner status line, then take over.
-        printf '%s' "$cur" > "$inner_cmd_file"
+        # The captured state can echo private command arguments from the user's
+        # settings, so keep these backups owner-only (0600 under a 0700 dir).
+        printf '%s' "$cur" > "$inner_cmd_file"; chmod 600 "$inner_cmd_file"
         if [ -f "$settings" ]; then
             jq '.statusLine // null' "$settings" > "$inner_obj_file"
         else
             printf 'null\n' > "$inner_obj_file"
         fi
+        chmod 600 "$inner_obj_file"
         install_wrapper
-        write_settings --arg cmd "$our_cmd" '.statusLine = {type: "command", command: $cmd}'
+        # Merge over the existing statusLine so sibling display options (e.g.
+        # statusLine.padding) are preserved while the wrapper is installed.
+        write_settings --arg cmd "$our_cmd" '.statusLine = ((.statusLine // {}) + {type: "command", command: $cmd})'
         if [ -n "$cur" ]; then
             echo "remote-guard status line installed — wrapping your existing status line:"
             echo "  inner: $cur"
@@ -136,6 +172,7 @@ uninstall)
     rm -f "$inner_cmd_file" "$inner_obj_file" "$wrapper_dst"
     ;;
 status)
+    warn_if_shadowed
     cur="$(current_cmd)"
     if [ "$cur" = "$our_cmd" ]; then
         echo "remote-guard status line: INSTALLED"

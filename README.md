@@ -93,6 +93,11 @@ can't auto-edit `settings.json` on plugin install, this one-time command is requ
 (and it is `disable-model-invocation`, so only you can run it). Re-run `install`
 after a plugin update to refresh the wrapper.
 
+`install` edits the user-level `~/.claude/settings.json`. If the current project
+defines a `statusLine` in `.claude/settings.json` or `.claude/settings.local.json`,
+that takes precedence and the guard line won't show there — `install`/`status` warn
+you when they detect this so you can remove the project entry.
+
 If you'd rather wire it into your own `statusLine` script by hand instead, the state
 is just two marker files:
 

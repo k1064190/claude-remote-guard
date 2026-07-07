@@ -30,10 +30,26 @@ if [ -s "$inner_file" ]; then
     [ -n "$out" ] && printf '\n'
 fi
 
-# remote-guard indicator. Armed unless a bypass marker file exists (the same
-# flags guard-remote-ops.sh / guard-remote-toggle.sh read and write).
-gr=""; [ -f "$guard_dir/bypass-read" ]  && gr="R"
-gw=""; [ -f "$guard_dir/bypass-write" ] && gw="W"
+# flag_active <file> — mirror guard-remote-ops.sh's bypass semantics so the
+# indicator matches what the guard actually enforces: file contents encode the
+# mode (empty/persist = active, digits = expiry epoch active only until then,
+# anything else = inactive). Read-only: unlike the guard's own copy this never
+# deletes expired flags — the status line only observes, it doesn't mutate state.
+flag_active() {
+    local v
+    [ -f "$1" ] || return 1
+    v="$(cat "$1" 2>/dev/null)" || return 1
+    case "$v" in
+        ''|persist) return 0 ;;
+        *[!0-9]*)   return 1 ;;
+        *)          [ "$(date +%s)" -lt "$v" ] ;;
+    esac
+}
+
+# remote-guard indicator. Armed unless a bypass flag is actually active (an
+# expired timed bypass still on disk reads as armed, matching the guard).
+gr=""; flag_active "$guard_dir/bypass-read"  && gr="R"
+gw=""; flag_active "$guard_dir/bypass-write" && gw="W"
 if [ -n "$gr$gw" ]; then
     printf '🔓 guard: %s bypass' "$gr$gw"
 else
