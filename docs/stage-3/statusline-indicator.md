@@ -36,7 +36,16 @@ command is the minimum required user action; it is `disable-model-invocation`.
 - `tests/test-guard-statusline.sh` — 22 asserts (wrapper composition + stdin passthrough + install/idempotency/uninstall/restore/no-op)
 - `README.md` — "Optional: status-line indicator" rewritten around the command; manual snippet kept as a fallback
 
-**Review loop** — _(pending: code-reviewer subagent + antigravity/codex skills + Codex PR bot)_
+**Review loop** — `code-reviewer-pro` subagent and the Codex CLI (gpt-5.5, read-only)
+converged on four fixes, all applied: (High) `our_cmd="bash $wrapper_dst"` was
+unquoted → broke when `$HOME` has spaces; the path is now double-quoted in the stored
+command. (Med) the command string was interpolated into the jq filter → JSON injection
+on `"`/`\` in the path; now passed via `--arg`/`--argjson`. (Med) `mktemp` created the
+temp in `/tmp` → cross-filesystem `mv` is non-atomic; temp is now created beside
+`settings.json` and removed on jq failure. (Med) malformed `settings.json` was treated
+as "no status line"; `require_valid_settings` now refuses and errors. Added tests for a
+spaced `$HOME` and malformed JSON (22 → 26 asserts). `eval` safety confirmed a non-issue
+(inner is the user's own configured command). _(Codex PR bot: pending on the PR.)_
 
 **Retrospective** — Composition (record inner → wrap → restore) is what makes this
 conflict-free with any status line; the copy-to-stable-path step is the non-obvious

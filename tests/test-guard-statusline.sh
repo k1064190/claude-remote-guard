@@ -62,7 +62,7 @@ ok 'empty inner -> guard only'           eq '🔒 guard: armed'      "$(wrap _ '
 reset_state
 printf '{"statusLine":{"type":"command","command":"echo BASE"},"other":"keep"}\n' > "$settings"
 setup install >/dev/null
-ok 'install repoints statusLine to wrapper'  eq "bash $wrapper_dst" "$(scmd)"
+ok 'install repoints statusLine to wrapper'  eq "bash \"$wrapper_dst\"" "$(scmd)"
 ok 'install preserves other settings keys'   eq 'keep' "$(jq -r '.other' "$settings")"
 ok 'install records inner command'           eq 'echo BASE' "$(cat "$guard_dir/statusline-inner")"
 ok 'install copies executable wrapper'       test -x "$wrapper_dst"
@@ -94,6 +94,26 @@ reset_state
 printf '{"statusLine":{"type":"command","command":"echo MINE"}}\n' > "$settings"
 setup uninstall >/dev/null
 ok 'uninstall no-op leaves foreign statusLine' eq 'echo MINE' "$(scmd)"
+
+# ---- setup: malformed settings.json is refused, not clobbered ---------------
+reset_state
+printf '{ not valid json' > "$settings"
+if setup install >/dev/null 2>&1; then ok 'install rejects malformed settings' false
+else ok 'install rejects malformed settings' true; fi
+ok 'malformed settings left untouched'       eq '{ not valid json' "$(cat "$settings")"
+
+# ---- install/execute survives spaces in $HOME (and thus the wrapper path) ----
+sp_home=$(mktemp -d "${TMPDIR:-/tmp}/guard sp.XXXXXX")
+sp_settings="$sp_home/.claude/settings.json"
+sp_wrap="$sp_home/.claude/remote-guard/statusline.sh"
+mkdir -p "$sp_home/.claude"
+printf '{"statusLine":{"type":"command","command":"echo BASE"}}\n' > "$sp_settings"
+HOME="$sp_home" bash "$SETUP" install >/dev/null
+ok 'spaced-path install quotes wrapper path'  eq "bash \"$sp_wrap\"" "$(jq -r '.statusLine.command' "$sp_settings")"
+# the stored command string, run through a shell, must not word-split on the space
+sp_out="$(printf '{}' | HOME="$sp_home" bash -c "$(jq -r '.statusLine.command' "$sp_settings")")"
+ok 'spaced-path stored command executes'      eq $'BASE\n🔒 guard: armed' "$sp_out"
+rm -rf "$sp_home"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

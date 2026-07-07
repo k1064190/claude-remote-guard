@@ -26,7 +26,20 @@ inner_cmd_file="$guard_dir/statusline-inner"        # command string for the wra
 inner_obj_file="$guard_dir/statusline-inner.json"   # full original object for exact restore
 
 mkdir -p "$guard_dir"
-our_cmd="bash $wrapper_dst"
+# Double-quote the path so the command works when $HOME contains spaces; this
+# exact string is stored in settings.json and eval'd by the wrapper as the inner
+# command, so both Claude Code and the wrapper honour the quoting.
+our_cmd="bash \"$wrapper_dst\""
+
+# require_valid_settings — refuse to touch a settings.json that exists but is not
+# valid JSON, rather than silently treating it as "no status line" and writing
+# partial state on top of a file we can't safely restore.
+require_valid_settings() {
+    if [ -f "$settings" ] && ! jq -e . "$settings" >/dev/null 2>&1; then
+        echo "error: $settings is not valid JSON — fix it before running /guard-statusline." >&2
+        exit 1
+    fi
+}
 
 # current_cmd -> prints the configured statusLine.command ("" if none / no file).
 current_cmd() {
@@ -34,14 +47,21 @@ current_cmd() {
     jq -r '.statusLine.command // ""' "$settings" 2>/dev/null || printf ''
 }
 
-# write_settings <jq-filter> — apply a jq transform to settings.json atomically,
-# creating the file as {} if it does not exist yet.
+# write_settings <jq-args...> — apply a jq program (args + filter) to
+# settings.json atomically, creating the file as {} if absent. The settings path
+# is appended automatically; the temp file is created alongside settings.json so
+# the final mv is a same-filesystem atomic rename (mktemp in /tmp could be a
+# cross-device copy). Temp file is removed if jq fails so nothing leaks.
 write_settings() {
-    local filter="$1" tmp
+    local tmp
     [ -f "$settings" ] || printf '{}\n' > "$settings"
-    tmp="$(mktemp)"
-    jq "$filter" "$settings" > "$tmp"
-    mv "$tmp" "$settings"
+    tmp="$(mktemp "$settings.XXXXXX")" || return 1
+    if jq "$@" "$settings" > "$tmp"; then
+        mv "$tmp" "$settings"
+    else
+        rm -f "$tmp"
+        return 1
+    fi
 }
 
 guard_state() {
@@ -59,6 +79,7 @@ action="${1:-status}"
 
 case "$action" in
 install)
+    require_valid_settings
     cur="$(current_cmd)"
     if [ "$cur" = "$our_cmd" ]; then
         # Already wired — just refresh the wrapper copy (logic may have changed).
@@ -73,7 +94,7 @@ install)
             printf 'null\n' > "$inner_obj_file"
         fi
         cp "$wrapper_src" "$wrapper_dst"; chmod +x "$wrapper_dst"
-        write_settings ".statusLine = {\"type\":\"command\",\"command\":\"$our_cmd\"}"
+        write_settings --arg cmd "$our_cmd" '.statusLine = {type: "command", command: $cmd}'
         if [ -n "$cur" ]; then
             echo "remote-guard status line installed — wrapping your existing status line:"
             echo "  inner: $cur"
@@ -84,6 +105,7 @@ install)
     echo "  state: $(guard_state)"
     ;;
 uninstall)
+    require_valid_settings
     cur="$(current_cmd)"
     if [ "$cur" != "$our_cmd" ]; then
         echo "remote-guard status line is not currently installed — nothing to do."
@@ -91,10 +113,10 @@ uninstall)
         exit 0
     fi
     if [ -f "$inner_obj_file" ] && [ "$(cat "$inner_obj_file")" != "null" ]; then
-        write_settings ".statusLine = $(cat "$inner_obj_file")"
+        write_settings --argjson obj "$(cat "$inner_obj_file")" '.statusLine = $obj'
         echo "remote-guard status line removed — restored your previous status line."
     else
-        write_settings "del(.statusLine)"
+        write_settings 'del(.statusLine)'
         echo "remote-guard status line removed — no previous status line to restore."
     fi
     rm -f "$inner_cmd_file" "$inner_obj_file" "$wrapper_dst"
