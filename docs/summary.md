@@ -5,3 +5,6 @@
 
 ## Stage 2 — Timed & persistent /unguard bypasses
 - [unguard-ttl-persist](stage-2/unguard-ttl-persist.md) — `/unguard <class> 30m|2h|persist` survives restarts (TTL auto-re-arms, max 24h); flag contents encode the mode; SessionStart clears only session-scoped/expired flags.
+
+## Stage 3 — Status-line indicator
+- [statusline-indicator](stage-3/statusline-indicator.md) — `/guard-statusline install` composes a `🔒 guard: armed` / `🔓 bypass` line on top of any existing status line (records inner → wraps → restores verbatim); survives plugin updates via a stable wrapper copy.

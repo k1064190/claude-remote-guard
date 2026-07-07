@@ -72,8 +72,29 @@ can't turn the guard off on its own — only you can.
 
 ## Optional: status-line indicator
 
-This plugin does not modify your status line (it can't merge with a custom one).
-If you want a visible indicator, add this to your `statusLine` script:
+Show the guard state in your status line with a single command:
+
+```bash
+/guard-statusline install     # add the guard line on top of your current status line
+/guard-statusline status      # show the current wiring and guard state
+/guard-statusline uninstall   # restore your previous status line exactly
+```
+
+It renders on its own final line — `🔒 guard: armed` normally, `🔓 guard: RW bypass`
+when a bypass is active.
+
+Claude Code allows only one `statusLine.command` and offers no hook to register or
+stack status lines, so `install` **composes**: it records whatever status line you
+already have as the "inner" line, then repoints `statusLine` at a wrapper that runs
+your inner line unchanged and appends the guard line. This works on top of ANY
+status line (a custom script, starship-based, a dashboard plugin) without conflict,
+and `uninstall` puts your original `statusLine` back verbatim. Because Claude Code
+can't auto-edit `settings.json` on plugin install, this one-time command is required
+(and it is `disable-model-invocation`, so only you can run it). Re-run `install`
+after a plugin update to refresh the wrapper.
+
+If you'd rather wire it into your own `statusLine` script by hand instead, the state
+is just two marker files:
 
 ```sh
 gr=""; [ -f "$HOME/.claude/remote-guard/bypass-read" ]  && gr="R"
