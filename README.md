@@ -72,18 +72,56 @@ can't turn the guard off on its own — only you can.
 
 ## Optional: status-line indicator
 
-This plugin does not modify your status line (it can't merge with a custom one).
-If you want a visible indicator, add this to your `statusLine` script:
+Show the guard state in your status line with a single command:
+
+```bash
+/guard-statusline install     # add the guard line on top of your current status line
+/guard-statusline status      # show the current wiring and guard state
+/guard-statusline uninstall   # restore your previous status line exactly
+```
+
+It renders on its own final line — `🔒 guard: armed` normally, `🔓 guard: RW bypass`
+when a bypass is active.
+
+Claude Code allows only one `statusLine.command` and offers no hook to register or
+stack status lines, so `install` **composes**: it records whatever status line you
+already have as the "inner" line, then repoints `statusLine` at a wrapper that runs
+your inner line unchanged and appends the guard line. This works on top of ANY
+status line (a custom script, starship-based, a dashboard plugin) without conflict,
+and `uninstall` puts your original `statusLine` back verbatim. Because Claude Code
+can't auto-edit `settings.json` on plugin install, this one-time command is required
+(and it is `disable-model-invocation`, so only you can run it). Re-run `install`
+after a plugin update to refresh the wrapper.
+
+`install` edits the user-level `~/.claude/settings.json`. If the current project
+defines a `statusLine` in `.claude/settings.json` or `.claude/settings.local.json`,
+that takes precedence and the guard line won't show there — `install`/`status` warn
+you when they detect this so you can remove the project entry.
+
+If you'd rather wire it into your own `statusLine` script by hand instead, the state
+is two marker files whose *contents* encode the mode (empty/`persist` = active,
+digits = expiry epoch) — check the content, not just existence, so an expired timed
+bypass reads as armed just like the guard itself:
 
 ```sh
-gr=""; [ -f "$HOME/.claude/remote-guard/bypass-read" ]  && gr="R"
-gw=""; [ -f "$HOME/.claude/remote-guard/bypass-write" ] && gw="W"
+_ga() {   # active bypass? empty/persist = yes; digits = epoch until it expires
+  [ -f "$1" ] || return 1
+  v="$(cat "$1" 2>/dev/null)" || return 1
+  case "$v" in ''|persist) return 0;; *[!0-9]*) return 1;; *) [ "$(date +%s)" -lt "$v" ];; esac
+}
+gr=""; _ga "$HOME/.claude/remote-guard/bypass-read"  && gr="R"
+gw=""; _ga "$HOME/.claude/remote-guard/bypass-write" && gw="W"
 if [ -n "$gr$gw" ]; then printf '  🔓guard:%s' "$gr$gw"; else printf '  🔒guard'; fi
 ```
 
 ## Uninstall
 
+If you ran `/guard-statusline install`, undo it **first** — otherwise your
+`settings.json` keeps pointing at the wrapper copy under `~/.claude/remote-guard/`
+and the status line still shows a stale `🔒 guard: armed` after the plugin is gone:
+
 ```bash
+/guard-statusline uninstall     # restores your previous status line (skip if unused)
 claude plugin uninstall remote-guard
 ```
 

@@ -242,111 +242,129 @@
       </div>
       <div class="node-row">
         <div class="node">
-          <span class="dot current"></span>
-          <span class="node-label current">2단계</span>
+          <span class="dot"></span>
+          <span class="node-label">2단계</span>
         </div>
         <div class="connector"></div>
       </div>
       <div class="node-row">
         <div class="node">
-          <span class="dot future"></span>
-          <span class="node-label">3단계</span>
+          <span class="dot current"></span>
+          <span class="node-label current">3단계</span>
         </div>
       </div>
     </nav>
 
     <section class="stage">
-      <h2>2단계</h2>
-      <p class="stage-summary"><code>/unguard</code> 우회를 시간 제한적이고 필요하면 영구적으로 만들어, 세션 전체를 초기화하는 대신 가드가 스스로 다시 활성화되도록 했습니다.</p>
+      <h2>3단계</h2>
+      <p class="stage-summary">기존에 있는 어떤 상태 표시줄 위에도 겹쳐 구성되는 상태 표시줄 인디케이터를 추가하여, 사용자가 자신의 스크립트를 직접 편집하지 않고도 가드의 armed/bypassed 상태를 볼 수 있게 했습니다.</p>
 
       <div class="grid">
         <article class="card">
-          <h3>Unguard TTL Persist</h3>
+          <h3>Statusline Indicator</h3>
 
           <div class="field">
             <h4>왜</h4>
             <p>
-              사용자가 자신이 무엇을 하는지 잘 알고 있는 상황에서 세션마다
-              <code>/unguard</code>를 다시 실행하는 것은 번거로웠습니다.
-              그리고 SessionStart의 일괄 <code>rm -f</code> 리셋은 재시작할
-              때마다 모든 우회를 초기화해버렸습니다. 사용자는 이 리셋 자체를
-              명령에서 제어할 수 있기를, 가능하다면 시간 제한을 두어 가드가
-              스스로 다시 활성화되기를 원했습니다.
+              사용자들은 가드 상태(armed 또는 bypassed)를 상태 표시줄에서
+              보고 싶어 했지만, Claude Code는 단 하나의
+              <code>statusLine.command</code>만 렌더링하며 플러그인이 여기에
+              등록하거나 쌓거나 덧붙일 방법을 제공하지 않습니다. 예전
+              README는 사용자가 자신의 상태 표시줄 스크립트를 직접
+              편집하라고 안내했는데, 이는 취약했고 상태 표시줄 전체를
+              소유하는 다른 플러그인을 사용하는 사람에게는 아예
+              불가능했습니다.
             </p>
           </div>
 
           <div class="field">
             <h4>무엇을</h4>
-            <p><code>/unguard &lt;read|write|all&gt; [30m|2h|45s|N|persist]</code>:</p>
+            <p><code>/guard-statusline [install|uninstall|status]</code>:</p>
             <ul>
-              <li>지속 시간 → 우회가 재시작 후에도 유지되며 자동 만료(최대 24시간; 단순 숫자는 분 단위); 세션 도중 만료되면 바로 다음 가드 대상 명령에서 가드가 다시 활성화됨</li>
-              <li><code>persist</code> → <code>/unguard off</code>할 때까지 유지</li>
-              <li>인자 없음 → 기존과 동일한 세션 범위 토글(100% 하위 호환)</li>
-              <li><code>status</code>가 남은 시간을 표시</li>
+              <li><code>install</code>은 이미 있는 상태 표시줄 위에 가드 줄을 겹쳐 구성하고 <code>statusLine</code>이 래퍼를 가리키도록 재설정함(멱등적; 갱신하려면 재실행)</li>
+              <li><code>uninstall</code>은 원래의 <code>statusLine</code> 객체를 그대로 복원</li>
+              <li><code>status</code>는 현재 연결 상태와 가드 상태를 보고</li>
+              <li><code>"🔒 guard: armed"</code> / <code>"🔓 guard: R|W|RW bypass"</code>를 마지막 줄에 자체적으로 렌더링</li>
             </ul>
           </div>
 
           <div class="field">
             <h4>어떻게</h4>
             <p>
-              플래그 파일의 내용이 모드를 인코딩합니다: 비어 있으면 세션,
-              숫자면 만료 epoch, <code>persist</code>면 영구, 그 외 값이면
-              비활성(절대 과소보호하지 않음). SessionStart 훅은 일괄
-              <code>rm -f</code>에서 <code>guard-remote-session-reset.sh</code>로
-              바뀌었으며, 이 스크립트는 세션 범위이거나 만료되었거나 인식할
-              수 없는 플래그만 정리합니다. <code>guard-remote-ops.sh</code>에는
-              명령마다 동일한 만료 검사를 수행하는 <code>flag_active()</code>가
-              추가되었습니다. <code>/unguard</code> 슬래시 명령은 모든 인자를
-              한 단어로 전달하므로, 토글 스크립트가 <code>$*</code>를
-              다시 분리합니다.
+              스크립트 두 개로 구성됩니다. <code>statusline-guard.sh</code>는
+              렌더링 시점 래퍼로, 기록된 내부 명령을 stdin을 그대로 유지한
+              채(<code>eval</code>, 선택적으로 설정되지 않은 변수 때문에
+              중단되지 않도록 <code>set +u</code> 서브셸에서) 실행하고, 그
+              출력을 그대로 찍은 뒤, bypass-read|write 마커 파일에서 읽은
+              가드 줄을 덧붙입니다(플래그 내용/만료를 존중하며 읽기 전용).
+              <code>guard-statusline-setup.sh</code>는 <code>jq</code>를
+              사용해 한 번만 수행되는 연결 작업을 합니다: 현재
+              <code>statusLine.command</code>(문자열)와 전체
+              <code>.statusLine</code> 객체를 저장하고(정확한 복원을 위해),
+              기존 <code>statusLine</code> 위에 병합하며(padding 같은
+              형제 필드를 보존), 래퍼를 안정적인 경로
+              (<code>~/.claude/remote-guard/statusline.sh</code>)로
+              복사해 플러그인 버전이 올라가도 settings 항목이 유효하게
+              유지되도록 하고, settings를 원자적으로 씁니다(temp+rename,
+              심볼릭 링크된 dotfile을 이식성 있게 처리). 명령 인자는
+              첫 토큰 확장으로 파싱합니다(글롭 없음).
+              <code>require_valid_settings</code>는 손상된 JSON을
+              거부하며, <code>warn_if_shadowed</code>는 가장 가까운 상위
+              <code>.claude/</code>까지 거슬러 올라가 프로젝트/로컬
+              <code>statusLine</code>이 사용자 수준의 설정을 가릴 때
+              경고합니다. 플러그인 설치 시 자동 설치는 불가능하므로(지원되는
+              훅으로는 <code>settings.json</code>을 편집할 수 없음), 이
+              명령이 사용자가 취해야 할 최소한의 행동이며
+              <code>disable-model-invocation</code>으로 설정되어 있습니다.
             </p>
           </div>
 
           <div class="field">
             <h4>리뷰 루프</h4>
             <p>
-              <code>code-reviewer-pro</code> 서브에이전트가 확인 후 읽기
-              레이스 컨디션을 지적했습니다 — <code>[ -f ]</code> 확인과
-              <code>cat</code> 사이에 플래그가 삭제되면 <code>''</code>로
-              읽혀 "세션 우회가 활성 상태"로 잘못 판단됩니다.
-              <code>flag_active()</code>와 <code>state()</code>에서 수정
-              (<code>cat … || return inactive</code>, 커밋
-              <code>c1c61a7</code>). 반려한 항목: 세션 리셋 스크립트에도
-              동일한 레이스가 있지만 결과적으로는 여전히 올바름(파일이
-              결국 삭제됨), 그리고 범위 밖의 추가 인자 사용법 경고. Codex
-              PR 리뷰는 PR에서 실행됩니다.
+              PR 이전에 <code>code-reviewer-pro</code>, Codex (gpt-5.5),
+              Antigravity (Gemini 3.1 Pro)가 리뷰했습니다: 공백이 있는
+              경로의 따옴표 처리, <code>jq --arg</code>/<code>--argjson</code>
+              (인젝션 방지), 같은 파일시스템 내 원자적 settings 쓰기,
+              손상된 JSON 거부, stdin 개행 보존, 원자적 래퍼 복사,
+              심볼릭 링크된 settings에 대한 write-through, 인자
+              글롭 안전성을 수정했습니다.
             </p>
             <p>
-              Codex GitHub 봇(PR #2, 1차)이 실제 문제 3건을 찾았고 모두
-              수정했습니다(커밋 <code>b32de9d</code>): 오버플로 크기의
-              지속 시간이 24시간 상한을 조용히 우회하던 문제 — 산술 연산
-              전에 자릿수를 먼저 제한하도록 수정; 앞자리가 0인 지속 시간이
-              8진수로 파싱되던 문제(<code>010m</code> = 8분) — 10진수를
-              강제하도록 수정; 만료된 오래된 플래그를 토글하면 그냥
-              삭제만 되던 문제(<code>/unguard</code>를 두 번 실행해야
-              했음) — flip/<code>all</code>이 이제 만료되었거나 인식할
-              수 없는 플래그를 OFF로 취급. 2차 리뷰는 문제 없음("no major
-              issues")으로 통과했습니다.
+              이후 Codex GitHub 봇이 4라운드를 진행했습니다: 1차 —
+              만료된 플래그 표시, 백업 권한 0600/0700, 프로젝트-shadow
+              경고, 형제 <code>statusLine</code> 키 보존; 2차 — 실수로
+              커밋된 스크래치 파일 제거, <code>printf %q</code> 경로
+              이스케이핑, 원자적 심볼릭 링크 쓰기, README 수동 스니펫
+              만료; 3차 — macOS/BSD를 위한 이식성 있는
+              <code>resolve_symlink</code>, 내부 <code>eval</code> 주변의
+              <code>set +u</code>, 상위 경로 순회 shadow 검사, 플러그인
+              제거 전 uninstall 안내 문서; 4차 — 이상 없음("Didn't find
+              any major issues"). 4라운드 동안 총 20건이 발견되어 20건
+              수정, 0건 보류되었습니다. 테스트가 22개 → 43개로 늘었습니다.
             </p>
           </div>
 
           <div class="field">
             <h4>코드 위치</h4>
             <ul class="codelist">
-              <li><code>scripts/guard-remote-toggle.sh</code> — 지속 시간/persist 파싱, TTL 기록, 남은 시간을 보여주는 status</li>
-              <li><code>scripts/guard-remote-ops.sh:83-101</code> — 만료를 인식하는 우회 검사 <code>flag_active()</code></li>
-              <li><code>scripts/guard-remote-session-reset.sh</code> — 새로운 SessionStart 정리 스크립트</li>
-              <li><code>hooks/hooks.json</code> — SessionStart가 이제 리셋 스크립트를 호출</li>
-              <li><code>tests/test-guard-remote-toggle.sh</code> (신규, assert 20건), <code>tests/test-guard-remote-ops.sh</code>(TTL/persist 플래그 내용 케이스)</li>
+              <li><code>scripts/statusline-guard.sh</code> — 렌더링 시점 합성 래퍼(stdin passthrough + 가드 줄)</li>
+              <li><code>scripts/guard-statusline-setup.sh</code> — install/uninstall/status; jq settings 편집, 안정 경로 복사, 멱등성, 정확한 복원</li>
+              <li><code>commands/guard-statusline.md</code> — 슬래시 명령(Bash, disable-model-invocation)</li>
+              <li><code>tests/test-guard-statusline.sh</code> — assert 43건</li>
+              <li><code>README.md</code> — "Optional: status-line indicator" 섹션</li>
             </ul>
           </div>
 
           <div class="field">
             <h4>회고</h4>
             <p class="retro">
-              모드를 플래그 내용에 인코딩한 덕분에 기존의 빈 파일 형식이
-              그대로 유효하게 유지되어, 마이그레이션 없이도 전체가
-              하위 호환성을 유지했습니다.
+              합성 방식(내부 명령 기록 → 감싸기 → 복원)이 어떤 상태
+              표시줄과도 충돌 없이 동작하게 해주는 핵심입니다. 안정 경로로
+              복사하는 단계 덕분에 플러그인이 업데이트되어도
+              settings.json이 유효하게 유지됩니다. 각 리뷰 라운드가 실제
+              문제를 잡아냈고, 이전 수정의 회귀까지 포함해서 — 적대적
+              다중 리뷰어 패스는 제값을 했습니다.
             </p>
           </div>
         </article>

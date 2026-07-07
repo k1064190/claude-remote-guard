@@ -242,107 +242,125 @@
       </div>
       <div class="node-row">
         <div class="node">
-          <span class="dot current"></span>
-          <span class="node-label current">Stage 2</span>
+          <span class="dot"></span>
+          <span class="node-label">Stage 2</span>
         </div>
         <div class="connector"></div>
       </div>
       <div class="node-row">
         <div class="node">
-          <span class="dot future"></span>
-          <span class="node-label">Stage 3</span>
+          <span class="dot current"></span>
+          <span class="node-label current">Stage 3</span>
         </div>
       </div>
     </nav>
 
     <section class="stage">
-      <h2>Stage 2</h2>
-      <p class="stage-summary">Made <code>/unguard</code> bypasses time-boxed and optionally persistent, so the guard can re-arm itself instead of relying on a blanket session reset.</p>
+      <h2>Stage 3</h2>
+      <p class="stage-summary">Added a status-line indicator that composes on top of any existing status line, so the guard's armed/bypassed state is visible without hand-editing the user's own script.</p>
 
       <div class="grid">
         <article class="card">
-          <h3>Unguard TTL Persist</h3>
+          <h3>Statusline Indicator</h3>
 
           <div class="field">
             <h4>Why</h4>
             <p>
-              Re-running <code>/unguard</code> every session was annoying when
-              the user knows what they're doing; a blanket SessionStart
-              <code>rm -f</code> reset every bypass on each restart. The user
-              wanted the reset itself controllable from the command, ideally
-              time-boxed so the guard re-arms on its own.
+              Users wanted the guard state (armed vs bypassed) visible in the
+              status line, but Claude Code renders a single
+              <code>statusLine.command</code> and gives plugins no way to
+              register, stack, or append to it. The old README told users to
+              hand-edit their own status-line script — brittle, and impossible
+              for anyone running a status-line plugin that owns the whole
+              line.
             </p>
           </div>
 
           <div class="field">
             <h4>What</h4>
-            <p><code>/unguard &lt;read|write|all&gt; [30m|2h|45s|N|persist]</code>:</p>
+            <p><code>/guard-statusline [install|uninstall|status]</code>:</p>
             <ul>
-              <li>duration → bypass survives restarts, auto-expires (max 24h; bare number = minutes); mid-session expiry re-arms the guard on the very next guarded command</li>
-              <li><code>persist</code> → survives until <code>/unguard off</code></li>
-              <li>no argument → unchanged session-scoped flip (100% backward compatible)</li>
-              <li><code>status</code> shows remaining time</li>
+              <li><code>install</code> composes the guard line on top of whatever status line you already have and repoints <code>statusLine</code> at a wrapper (idempotent; re-run to refresh)</li>
+              <li><code>uninstall</code> restores the original <code>statusLine</code> object verbatim</li>
+              <li><code>status</code> reports the current wiring and guard state</li>
+              <li>renders <code>"🔒 guard: armed"</code> / <code>"🔓 guard: R|W|RW bypass"</code> on its own final line</li>
             </ul>
           </div>
 
           <div class="field">
             <h4>How</h4>
             <p>
-              The flag file contents encode the mode: empty = session, digits =
-              expiry epoch, <code>persist</code> = permanent, anything else =
-              inactive (never under-protects). The SessionStart hook was
-              changed from a blanket <code>rm -f</code> to
-              <code>guard-remote-session-reset.sh</code>, which only clears
-              session-scoped, expired, or unrecognized flags.
-              <code>guard-remote-ops.sh</code> gained <code>flag_active()</code>
-              which does the same expiry check per command. The
-              <code>/unguard</code> slash command passes all args as one word,
-              so the toggle script re-splits <code>$*</code>.
+              Two scripts. <code>statusline-guard.sh</code> is the render-time
+              wrapper: it runs the recorded inner command with stdin
+              unchanged (<code>eval</code>, in a <code>set +u</code> subshell
+              so optional unset vars don't abort it), prints its output, then
+              appends the guard line read from the bypass-read|write marker
+              files (honoring flag contents/expiry, read-only).
+              <code>guard-statusline-setup.sh</code> does the one-time wiring
+              with <code>jq</code>: saves the current
+              <code>statusLine.command</code> (string) and full
+              <code>.statusLine</code> object (for exact restore), merges
+              over the existing <code>statusLine</code> (preserving siblings
+              like padding), copies the wrapper to a stable path
+              (<code>~/.claude/remote-guard/statusline.sh</code>) so the
+              settings entry survives plugin version bumps, and writes
+              settings atomically (temp+rename, resolving symlinked dotfiles
+              portably). Command arg parsed with first-token expansion (no
+              glob). <code>require_valid_settings</code> refuses malformed
+              JSON; <code>warn_if_shadowed</code> walks up to the nearest
+              ancestor <code>.claude/</code> to warn when a project/local
+              <code>statusLine</code> would shadow the user-level one.
+              Auto-install on plugin install is impossible (no supported hook
+              edits <code>settings.json</code>), so the command is the
+              minimum required user action; it is
+              <code>disable-model-invocation</code>.
             </p>
           </div>
 
           <div class="field">
             <h4>Review loop</h4>
             <p>
-              <code>code-reviewer-pro</code> subagent flagged a check-then-read
-              race: a flag deleted between <code>[ -f ]</code> and
-              <code>cat</code> reads as <code>''</code> → wrongly "session
-              bypass active". Fixed in <code>flag_active()</code> and
-              <code>state()</code> (<code>cat … || return inactive</code>,
-              commit <code>c1c61a7</code>). Dismissed: the same race in the
-              session-reset script (outcome is still correct — the file ends
-              up deleted) and an extra-argument usage warning (out of scope).
-              Codex PR review runs on the PR.
+              Reviewed pre-PR by <code>code-reviewer-pro</code>, Codex
+              (gpt-5.5), and Antigravity (Gemini 3.1 Pro): fixed path
+              quoting for spaces, <code>jq --arg</code>/<code>--argjson</code>
+              (no injection), atomic same-fs settings write, malformed-JSON
+              refusal, stdin-newline preservation, atomic wrapper copy,
+              symlinked-settings write-through, arg glob-safety.
             </p>
             <p>
-              Codex GitHub bot (PR #2, round 1) found three real issues, all
-              fixed (commit <code>b32de9d</code>): an overflow-sized duration
-              silently bypassed the 24h cap — digit length now capped before
-              arithmetic; leading-zero durations parsed as octal
-              (<code>010m</code> = 8min) — forced base 10; flipping a stale
-              expired flag only deleted it (needed two <code>/unguard</code>s)
-              — flip/<code>all</code> now treat expired/unrecognized flags as
-              OFF. Round 2: clean ("no major issues").
+              The Codex GitHub bot then ran four rounds: round 1 —
+              expired-flag display, 0600/0700 backup perms, project-shadow
+              warning, preserve sibling <code>statusLine</code> keys; round 2
+              — removed accidentally-committed scratch files,
+              <code>printf %q</code> path escaping, atomic symlink write,
+              README manual-snippet expiry; round 3 — portable
+              <code>resolve_symlink</code> for macOS/BSD, <code>set +u</code>
+              around inner <code>eval</code>, ancestor-walk shadow check,
+              uninstall-before-plugin-uninstall docs; round 4 — clean
+              ("Didn't find any major issues"). Across 4 bot rounds: 20
+              findings raised, 20 fixed, 0 deferred. Tests grew 22 → 43.
             </p>
           </div>
 
           <div class="field">
             <h4>Code locations</h4>
             <ul class="codelist">
-              <li><code>scripts/guard-remote-toggle.sh</code> — duration/persist parsing, TTL write, status with remaining time</li>
-              <li><code>scripts/guard-remote-ops.sh:83-101</code> — <code>flag_active()</code> expiry-aware bypass check</li>
-              <li><code>scripts/guard-remote-session-reset.sh</code> — new SessionStart cleanup</li>
-              <li><code>hooks/hooks.json</code> — SessionStart now calls the reset script</li>
-              <li><code>tests/test-guard-remote-toggle.sh</code> (new, 20 asserts), <code>tests/test-guard-remote-ops.sh</code> (TTL/persist flag-content cases)</li>
+              <li><code>scripts/statusline-guard.sh</code> — render-time composition wrapper (stdin passthrough + guard line)</li>
+              <li><code>scripts/guard-statusline-setup.sh</code> — install/uninstall/status; jq settings edit, stable-path copy, idempotency, exact restore</li>
+              <li><code>commands/guard-statusline.md</code> — slash command (Bash, disable-model-invocation)</li>
+              <li><code>tests/test-guard-statusline.sh</code> — 43 asserts</li>
+              <li><code>README.md</code> — "Optional: status-line indicator" section</li>
             </ul>
           </div>
 
           <div class="field">
             <h4>Retrospective</h4>
             <p class="retro">
-              Encoding the mode in flag contents kept the old empty-file format
-              valid, so everything stayed backward compatible with no
-              migration.
+              Composition (record inner → wrap → restore) is what makes this
+              conflict-free with any status line; the copy-to-stable-path
+              step keeps settings.json valid across plugin updates. Each
+              review round caught real issues, including regressions in
+              earlier fixes — the adversarial multi-reviewer pass paid off.
             </p>
           </div>
         </article>
