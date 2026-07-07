@@ -16,18 +16,16 @@ set -u
 guard_dir="$HOME/.claude/remote-guard"
 inner_file="$guard_dir/statusline-inner"
 
-# Claude Code feeds the status-line JSON on stdin. Buffer it so it can be passed
-# through to the inner status line unchanged (the guard part ignores it).
-input="$(cat)"
-
 # Run the previously-configured ("inner") status line, if one was captured at
-# install time. Command substitution strips its trailing newline so the guard
-# line always attaches as a clean final line. `eval` is required to honour the
-# inner command's own arguments; it is the exact string Claude Code would have
-# run itself, so this introduces no new trust boundary.
+# install time. The inner command inherits this wrapper's stdin (the status-line
+# JSON from Claude Code) directly — no buffering — so a trailing newline is
+# preserved for inner commands that read line-by-line. Command substitution
+# strips the inner *output*'s trailing newline so the guard line always attaches
+# as a clean final line. `eval` honours the inner command's own arguments; it is
+# the exact string Claude Code would have run itself, so it adds no trust boundary.
 if [ -s "$inner_file" ]; then
     inner="$(cat "$inner_file")"
-    out="$(printf '%s' "$input" | eval "$inner")"
+    out="$(eval "$inner")"
     printf '%s' "$out"
     [ -n "$out" ] && printf '\n'
 fi

@@ -45,7 +45,17 @@ temp in `/tmp` → cross-filesystem `mv` is non-atomic; temp is now created besi
 `settings.json` and removed on jq failure. (Med) malformed `settings.json` was treated
 as "no status line"; `require_valid_settings` now refuses and errors. Added tests for a
 spaced `$HOME` and malformed JSON (22 → 26 asserts). `eval` safety confirmed a non-issue
-(inner is the user's own configured command). _(Codex PR bot: pending on the PR.)_
+(inner is the user's own configured command).
+
+A third reviewer (`agy`, Gemini 3.1 Pro) caught four more, all applied: (High) buffering
+stdin via `input="$(cat)"` stripped the trailing newline before the inner status line —
+now the inner command inherits the wrapper's stdin directly. (Med) `cp` overwrote the
+active wrapper in place → a concurrent render could read a half-written file; now copied
+via temp + `mv` (atomic). (Med) `mv` onto a symlinked `settings.json` (stow/yadm) replaced
+the link with a regular file; `write_settings` now writes through a symlink. (Low)
+`set -- $action` word-split/glob-expanded the argument; replaced with first-token
+parameter expansion. Added stdin-newline and symlinked-settings tests (26 → 32 asserts).
+_(Codex PR bot: pending on the PR.)_
 
 **Retrospective** — Composition (record inner → wrap → restore) is what makes this
 conflict-free with any status line; the copy-to-stable-path step is the non-obvious

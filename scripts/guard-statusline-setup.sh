@@ -54,14 +54,28 @@ current_cmd() {
 # cross-device copy). Temp file is removed if jq fails so nothing leaks.
 write_settings() {
     local tmp
-    [ -f "$settings" ] || printf '{}\n' > "$settings"
+    [ -e "$settings" ] || printf '{}\n' > "$settings"
     tmp="$(mktemp "$settings.XXXXXX")" || return 1
-    if jq "$@" "$settings" > "$tmp"; then
-        mv "$tmp" "$settings"
-    else
+    if ! jq "$@" "$settings" > "$tmp"; then
         rm -f "$tmp"
         return 1
     fi
+    if [ -L "$settings" ]; then
+        # settings.json is a managed dotfile (stow/yadm/chezmoi): write through
+        # the symlink so we replace its target's contents, not the link itself.
+        cat "$tmp" > "$settings" && rm -f "$tmp"
+    else
+        mv "$tmp" "$settings"   # atomic same-filesystem replace
+    fi
+}
+
+# install_wrapper — copy the wrapper to its stable path atomically (temp + mv),
+# so a status-line render already executing the old wrapper keeps reading its
+# inode instead of a half-written file being overwritten in place.
+install_wrapper() {
+    cp "$wrapper_src" "$wrapper_dst.new"
+    chmod +x "$wrapper_dst.new"
+    mv "$wrapper_dst.new" "$wrapper_dst"
 }
 
 guard_state() {
@@ -71,11 +85,11 @@ guard_state() {
     if [ -n "$gr$gw" ]; then echo "🔓 bypass:$gr$gw"; else echo "🔒 armed"; fi
 }
 
+# The slash command hands arguments over as one word; keep only the first token,
+# without word-splitting or glob expansion (a bare `*` must not expand to files).
 action="${1:-status}"
-# The slash command hands arguments over as one word; keep only the first token.
-# shellcheck disable=SC2086
-set -- $action
-action="${1:-status}"
+action="${action%% *}"
+action="${action:-status}"
 
 case "$action" in
 install)
@@ -83,7 +97,7 @@ install)
     cur="$(current_cmd)"
     if [ "$cur" = "$our_cmd" ]; then
         # Already wired — just refresh the wrapper copy (logic may have changed).
-        cp "$wrapper_src" "$wrapper_dst"; chmod +x "$wrapper_dst"
+        install_wrapper
         echo "remote-guard status line already installed — wrapper refreshed."
     else
         # Capture whatever is there now as the inner status line, then take over.
@@ -93,7 +107,7 @@ install)
         else
             printf 'null\n' > "$inner_obj_file"
         fi
-        cp "$wrapper_src" "$wrapper_dst"; chmod +x "$wrapper_dst"
+        install_wrapper
         write_settings --arg cmd "$our_cmd" '.statusLine = {type: "command", command: $cmd}'
         if [ -n "$cur" ]; then
             echo "remote-guard status line installed — wrapping your existing status line:"

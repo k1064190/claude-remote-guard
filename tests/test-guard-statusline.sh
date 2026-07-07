@@ -115,5 +115,25 @@ sp_out="$(printf '{}' | HOME="$sp_home" bash -c "$(jq -r '.statusLine.command' "
 ok 'spaced-path stored command executes'      eq $'BASE\n🔒 guard: armed' "$sp_out"
 rm -rf "$sp_home"
 
+# ---- wrapper passes stdin to inner intact, including the trailing newline -----
+reset_state
+printf 'cat > "$HOME/.claude/seen"' > "$guard_dir/statusline-inner"
+printf '{"a":1}\n' | HOME="$TEST_HOME" bash "$WRAP" >/dev/null   # 8 bytes in
+ok 'inner stdin keeps trailing newline' \
+   eq '8' "$(wc -c < "$TEST_HOME/.claude/seen" | tr -d ' ')"
+
+# ---- settings.json managed as a symlink (stow/yadm) stays a symlink ----------
+reset_state
+real="$TEST_HOME/.claude/settings.real.json"
+printf '{"statusLine":{"type":"command","command":"echo BASE"},"k":"v"}\n' > "$real"
+ln -sf "$real" "$settings"
+setup install >/dev/null
+ok 'install keeps settings a symlink'         test -L "$settings"
+ok 'install writes through to real target'     eq "bash \"$wrapper_dst\"" "$(jq -r '.statusLine.command' "$real")"
+ok 'install through symlink preserves keys'    eq 'v' "$(jq -r '.k' "$real")"
+setup uninstall >/dev/null
+ok 'uninstall keeps settings a symlink'        test -L "$settings"
+ok 'uninstall restores real target'            eq 'echo BASE' "$(jq -r '.statusLine.command' "$real")"
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
