@@ -116,7 +116,12 @@ if [ -n "$gr$gw" ]; then printf '  🔓guard:%s' "$gr$gw"; else printf '  🔒gu
 
 ## Uninstall
 
+If you ran `/guard-statusline install`, undo it **first** — otherwise your
+`settings.json` keeps pointing at the wrapper copy under `~/.claude/remote-guard/`
+and the status line still shows a stale `🔒 guard: armed` after the plugin is gone:
+
 ```bash
+/guard-statusline uninstall     # restores your previous status line (skip if unused)
 claude plugin uninstall remote-guard
 ```
 

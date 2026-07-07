@@ -74,6 +74,17 @@ now resolves the link target and renames a temp onto it (atomic + link preserved
 the README manual snippet still checked file existence; updated to the content/expiry
 check. Added shell-metacharacter-path test (40 → 41).
 
+Round 3 raised four (all fixed; the 3-round cap was then reached): (P2) round 2's
+symlink fix used GNU `readlink -f`, absent on macOS/BSD, so the fallback still replaced
+the link — added a portable `resolve_symlink` (one-level POSIX `readlink`, chased in a
+loop) with a `cat` write-through fallback that never clobbers the link. (P2) the wrapper
+ran `eval "$inner"` under its own `set -u`, aborting inner status lines that reference
+optional unset env vars — now evaluated in a `set +u` subshell. (P3) `warn_if_shadowed`
+only checked `$PWD`, missing project settings when run from a subdirectory — now walks up
+to the nearest ancestor `.claude/`. (P2) README uninstall guidance now tells status-line
+users to run `/guard-statusline uninstall` before removing the plugin (else a stale
+wrapper keeps rendering). Tests 41 → 43.
+
 **Retrospective** — Composition (record inner → wrap → restore) is what makes this
 conflict-free with any status line; the copy-to-stable-path step is the non-obvious
 bit that keeps `settings.json` valid across plugin updates.

@@ -25,7 +25,11 @@ inner_file="$guard_dir/statusline-inner"
 # the exact string Claude Code would have run itself, so it adds no trust boundary.
 if [ -s "$inner_file" ]; then
     inner="$(cat "$inner_file")"
-    out="$(eval "$inner")"
+    # Evaluate with nounset OFF (scoped to this subshell): Claude Code runs the
+    # status line without `set -u`, and inner commands may reference optional,
+    # possibly-unset env vars — inheriting our nounset would abort them and drop
+    # the user's status line, leaving only the guard line.
+    out="$(set +u; eval "$inner")"
     printf '%s' "$out"
     [ -n "$out" ] && printf '\n'
 fi

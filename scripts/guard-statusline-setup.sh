@@ -54,25 +54,44 @@ current_cmd() {
 # is appended automatically; the temp file is created alongside settings.json so
 # the final mv is a same-filesystem atomic rename (mktemp in /tmp could be a
 # cross-device copy). Temp file is removed if jq fails so nothing leaks.
+# resolve_symlink <path> -> prints the final target of a symlink chain, or fails.
+# Portable (uses one-level POSIX `readlink`, present on macOS/BSD and Linux)
+# instead of GNU-only `readlink -f`. Resolves each level relative to its link's
+# directory; bails out after 40 hops to avoid a cyclic-link infinite loop.
+resolve_symlink() {
+    local link="$1" target i=0
+    while [ -L "$link" ]; do
+        [ "$i" -lt 40 ] || return 1
+        i=$((i + 1))
+        target="$(readlink "$link")" || return 1
+        case "$target" in
+            /*) link="$target" ;;
+            *)  link="$(cd "$(dirname "$link")" && cd "$(dirname "$target")" 2>/dev/null && pwd)/$(basename "$target")" ;;
+        esac
+    done
+    printf '%s' "$link"
+}
+
 write_settings() {
     local dest tmp
     [ -e "$settings" ] || printf '{}\n' > "$settings"
-    # Resolve a managed-dotfile symlink (stow/yadm/chezmoi) to its real target so
-    # we can rename a temp onto that target atomically — this both preserves the
-    # symlink itself and keeps the write crash-safe. If the target can't be
-    # resolved (no `readlink -f`), fall back to the link path.
-    if [ -L "$settings" ]; then
-        dest="$(readlink -f "$settings" 2>/dev/null)" || dest=""
-        [ -n "$dest" ] || dest="$settings"
+    # For a managed-dotfile symlink (stow/yadm/chezmoi) write to its real target
+    # so the link itself is preserved. Resolving the target lets us rename a temp
+    # onto it atomically; if resolution fails, write through the link with `cat`
+    # (non-atomic, but never replaces the link with a regular file).
+    if [ -L "$settings" ] && dest="$(resolve_symlink "$settings")" && [ -n "$dest" ]; then
+        tmp="$(mktemp "$dest.XXXXXX")" || return 1
+        if ! jq "$@" "$settings" > "$tmp"; then rm -f "$tmp"; return 1; fi
+        mv "$tmp" "$dest"                       # atomic rename onto the real file
+    elif [ -L "$settings" ]; then
+        tmp="$(mktemp "$settings.XXXXXX")" || return 1
+        if ! jq "$@" "$settings" > "$tmp"; then rm -f "$tmp"; return 1; fi
+        cat "$tmp" > "$settings" && rm -f "$tmp"  # write through the link
     else
-        dest="$settings"
+        tmp="$(mktemp "$settings.XXXXXX")" || return 1
+        if ! jq "$@" "$settings" > "$tmp"; then rm -f "$tmp"; return 1; fi
+        mv "$tmp" "$settings"                   # atomic same-filesystem replace
     fi
-    tmp="$(mktemp "$dest.XXXXXX")" || return 1
-    if ! jq "$@" "$settings" > "$tmp"; then
-        rm -f "$tmp"
-        return 1
-    fi
-    mv "$tmp" "$dest"   # atomic same-filesystem rename onto the real file
 }
 
 # install_wrapper — copy the wrapper to its stable path atomically (temp + mv),
@@ -112,12 +131,22 @@ guard_state() {
 # .claude/settings.json could leak into the repo), so warn and let the user
 # resolve it rather than silently reporting a success that has no visible effect.
 warn_if_shadowed() {
-    local f
-    for f in ".claude/settings.local.json" ".claude/settings.json"; do
-        if [ -f "$PWD/$f" ] && jq -e 'has("statusLine") and .statusLine != null' "$PWD/$f" >/dev/null 2>&1; then
-            echo "warning: $PWD/$f defines a statusLine that overrides the user-level one;"
-            echo "         the guard line will not appear in this project until that entry is removed."
+    local dir="$PWD" f
+    # Claude Code takes the nearest ancestor `.claude/` as the project root, so
+    # walk up from the current directory (install may run in a subdirectory)
+    # until we hit one, then check only that project's settings for a statusLine.
+    while :; do
+        if [ -d "$dir/.claude" ]; then
+            for f in "$dir/.claude/settings.local.json" "$dir/.claude/settings.json"; do
+                if [ -f "$f" ] && jq -e 'has("statusLine") and .statusLine != null' "$f" >/dev/null 2>&1; then
+                    echo "warning: $f defines a statusLine that overrides the user-level one;"
+                    echo "         the guard line will not appear in this project until that entry is removed."
+                fi
+            done
+            return
         fi
+        [ "$dir" = "/" ] && return
+        dir="$(dirname "$dir")"
     done
 }
 

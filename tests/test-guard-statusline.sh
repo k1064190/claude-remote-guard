@@ -175,5 +175,21 @@ ok 'no warning without project statusLine' \
    sh -c "! printf '%s' \"\$1\" | grep -q 'overrides the user-level one'" _ "$sh_out"
 rm -rf "$proj"
 
+# install warns from a SUBDIRECTORY of a project whose root defines a statusLine
+reset_state
+proj=$(mktemp -d)
+mkdir -p "$proj/.claude" "$proj/sub/deep"
+printf '{"statusLine":{"type":"command","command":"echo P"}}\n' > "$proj/.claude/settings.json"
+sh_out="$(cd "$proj/sub/deep" && HOME="$TEST_HOME" bash "$SETUP" install 2>&1)"
+ok 'warns from subdir via ancestor walk' \
+   sh -c "printf '%s' \"\$1\" | grep -q 'overrides the user-level one'" _ "$sh_out"
+rm -rf "$proj"
+
+# ---- inner command with an unset var must not abort under the wrapper's set -u
+reset_state
+printf '%s' 'printf "X%sY" "$DEFINITELY_UNSET_VAR"' > "$guard_dir/statusline-inner"
+ok 'inner with unset var still renders (no nounset abort)' \
+   eq $'XY\n🔒 guard: armed' "$(wrap _ '')"
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
