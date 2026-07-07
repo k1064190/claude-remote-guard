@@ -99,11 +99,18 @@ that takes precedence and the guard line won't show there — `install`/`status`
 you when they detect this so you can remove the project entry.
 
 If you'd rather wire it into your own `statusLine` script by hand instead, the state
-is just two marker files:
+is two marker files whose *contents* encode the mode (empty/`persist` = active,
+digits = expiry epoch) — check the content, not just existence, so an expired timed
+bypass reads as armed just like the guard itself:
 
 ```sh
-gr=""; [ -f "$HOME/.claude/remote-guard/bypass-read" ]  && gr="R"
-gw=""; [ -f "$HOME/.claude/remote-guard/bypass-write" ] && gw="W"
+_ga() {   # active bypass? empty/persist = yes; digits = epoch until it expires
+  [ -f "$1" ] || return 1
+  v="$(cat "$1" 2>/dev/null)" || return 1
+  case "$v" in ''|persist) return 0;; *[!0-9]*) return 1;; *) [ "$(date +%s)" -lt "$v" ];; esac
+}
+gr=""; _ga "$HOME/.claude/remote-guard/bypass-read"  && gr="R"
+gw=""; _ga "$HOME/.claude/remote-guard/bypass-write" && gw="W"
 if [ -n "$gr$gw" ]; then printf '  🔓guard:%s' "$gr$gw"; else printf '  🔒guard'; fi
 ```
 

@@ -72,7 +72,7 @@ ok 'empty inner -> guard only'           eq '🔒 guard: armed'      "$(wrap _ '
 reset_state
 printf '{"statusLine":{"type":"command","command":"echo BASE","padding":0},"other":"keep"}\n' > "$settings"
 setup install >/dev/null
-ok 'install repoints statusLine to wrapper'  eq "bash \"$wrapper_dst\"" "$(scmd)"
+ok 'install repoints statusLine to wrapper'  eq "bash $(printf '%q' "$wrapper_dst")" "$(scmd)"
 ok 'install preserves other settings keys'   eq 'keep' "$(jq -r '.other' "$settings")"
 ok 'install preserves sibling statusLine key' eq '0' "$(jq -r '.statusLine.padding' "$settings")"
 ok 'install records inner command'           eq 'echo BASE' "$(cat "$guard_dir/statusline-inner")"
@@ -122,11 +122,21 @@ sp_wrap="$sp_home/.claude/remote-guard/statusline.sh"
 mkdir -p "$sp_home/.claude"
 printf '{"statusLine":{"type":"command","command":"echo BASE"}}\n' > "$sp_settings"
 HOME="$sp_home" bash "$SETUP" install >/dev/null
-ok 'spaced-path install quotes wrapper path'  eq "bash \"$sp_wrap\"" "$(jq -r '.statusLine.command' "$sp_settings")"
+ok 'spaced-path install quotes wrapper path'  eq "bash $(printf '%q' "$sp_wrap")" "$(jq -r '.statusLine.command' "$sp_settings")"
 # the stored command string, run through a shell, must not word-split on the space
 sp_out="$(printf '{}' | HOME="$sp_home" bash -c "$(jq -r '.statusLine.command' "$sp_settings")")"
 ok 'spaced-path stored command executes'      eq $'BASE\n🔒 guard: armed' "$sp_out"
 rm -rf "$sp_home"
+
+# ---- install/execute survives shell metacharacters ($) in the path -----------
+mc_home=$(mktemp -d "${TMPDIR:-/tmp}/guard\$meta.XXXXXX")   # literal $ in dir name
+mkdir -p "$mc_home/.claude"
+printf '{"statusLine":{"type":"command","command":"echo MC"}}\n' > "$mc_home/.claude/settings.json"
+HOME="$mc_home" bash "$SETUP" install >/dev/null
+# the stored command must not re-expand $meta when a shell runs it
+mc_out="$(printf '{}' | HOME="$mc_home" bash -c "$(jq -r '.statusLine.command' "$mc_home/.claude/settings.json")")"
+ok 'metachar-path stored command executes'    eq $'MC\n🔒 guard: armed' "$mc_out"
+rm -rf "$mc_home"
 
 # ---- wrapper passes stdin to inner intact, including the trailing newline -----
 reset_state
@@ -142,7 +152,7 @@ printf '{"statusLine":{"type":"command","command":"echo BASE"},"k":"v"}\n' > "$r
 ln -sf "$real" "$settings"
 setup install >/dev/null
 ok 'install keeps settings a symlink'         test -L "$settings"
-ok 'install writes through to real target'     eq "bash \"$wrapper_dst\"" "$(jq -r '.statusLine.command' "$real")"
+ok 'install writes through to real target'     eq "bash $(printf '%q' "$wrapper_dst")" "$(jq -r '.statusLine.command' "$real")"
 ok 'install through symlink preserves keys'    eq 'v' "$(jq -r '.k' "$real")"
 setup uninstall >/dev/null
 ok 'uninstall keeps settings a symlink'        test -L "$settings"

@@ -26,10 +26,12 @@ inner_cmd_file="$guard_dir/statusline-inner"        # command string for the wra
 inner_obj_file="$guard_dir/statusline-inner.json"   # full original object for exact restore
 
 mkdir -p "$guard_dir"; chmod 700 "$guard_dir" 2>/dev/null || true
-# Double-quote the path so the command works when $HOME contains spaces; this
-# exact string is stored in settings.json and eval'd by the wrapper as the inner
-# command, so both Claude Code and the wrapper honour the quoting.
-our_cmd="bash \"$wrapper_dst\""
+# Shell-escape the path (not just double-quote it) so the stored command is
+# safe even when $HOME contains spaces, $, backticks, or quotes — a shell later
+# re-parses this string, and double quotes alone would re-expand $var/`cmd`.
+# This exact string is stored in settings.json and eval'd by the wrapper as the
+# inner command, so both Claude Code and the wrapper honour the quoting.
+our_cmd="bash $(printf '%q' "$wrapper_dst")"
 
 # require_valid_settings — refuse to touch a settings.json that exists but is not
 # valid JSON, rather than silently treating it as "no status line" and writing
@@ -53,20 +55,24 @@ current_cmd() {
 # the final mv is a same-filesystem atomic rename (mktemp in /tmp could be a
 # cross-device copy). Temp file is removed if jq fails so nothing leaks.
 write_settings() {
-    local tmp
+    local dest tmp
     [ -e "$settings" ] || printf '{}\n' > "$settings"
-    tmp="$(mktemp "$settings.XXXXXX")" || return 1
+    # Resolve a managed-dotfile symlink (stow/yadm/chezmoi) to its real target so
+    # we can rename a temp onto that target atomically — this both preserves the
+    # symlink itself and keeps the write crash-safe. If the target can't be
+    # resolved (no `readlink -f`), fall back to the link path.
+    if [ -L "$settings" ]; then
+        dest="$(readlink -f "$settings" 2>/dev/null)" || dest=""
+        [ -n "$dest" ] || dest="$settings"
+    else
+        dest="$settings"
+    fi
+    tmp="$(mktemp "$dest.XXXXXX")" || return 1
     if ! jq "$@" "$settings" > "$tmp"; then
         rm -f "$tmp"
         return 1
     fi
-    if [ -L "$settings" ]; then
-        # settings.json is a managed dotfile (stow/yadm/chezmoi): write through
-        # the symlink so we replace its target's contents, not the link itself.
-        cat "$tmp" > "$settings" && rm -f "$tmp"
-    else
-        mv "$tmp" "$settings"   # atomic same-filesystem replace
-    fi
+    mv "$tmp" "$dest"   # atomic same-filesystem rename onto the real file
 }
 
 # install_wrapper — copy the wrapper to its stable path atomically (temp + mv),

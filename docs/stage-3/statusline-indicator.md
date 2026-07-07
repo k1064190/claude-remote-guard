@@ -65,6 +65,15 @@ silently shadows the user-level one — `install`/`status` now warn (user chose 
 proceed over refuse/scope-write). (P3) install replaced the whole `.statusLine` object,
 dropping siblings like `padding` — now merges. Tests 32 → 40.
 
+Round 2 raised four more, all fixed: (P3) `git add -A` during development had swept
+nine scratch probe files (`test-glob.sh`, `tmp`, `test-symlink/*`, …) into the commits;
+since the marketplace packages `source: "."` they would ship — removed. (P2) the stored
+wrapper command double-quoted the path, which a shell still re-expands (`$`, backticks);
+now shell-escaped with `printf %q`. (P2) the symlink write path used `cat >` (non-atomic);
+now resolves the link target and renames a temp onto it (atomic + link preserved). (P3)
+the README manual snippet still checked file existence; updated to the content/expiry
+check. Added shell-metacharacter-path test (40 → 41).
+
 **Retrospective** — Composition (record inner → wrap → restore) is what makes this
 conflict-free with any status line; the copy-to-stable-path step is the non-obvious
 bit that keeps `settings.json` valid across plugin updates.
