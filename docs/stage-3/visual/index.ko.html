@@ -322,8 +322,8 @@
           <div class="field">
             <h4>리뷰 루프</h4>
             <p>
-              <code>code-reviewer-pro</code> + Codex (gpt-5.5) + Antigravity
-              (Gemini 3.1 Pro)가 PR 이전에 리뷰했습니다: 공백이 있는
+              PR 이전에 <code>code-reviewer-pro</code>, Codex (gpt-5.5),
+              Antigravity (Gemini 3.1 Pro)가 리뷰했습니다: 공백이 있는
               경로의 따옴표 처리, <code>jq --arg</code>/<code>--argjson</code>
               (인젝션 방지), 같은 파일시스템 내 원자적 settings 쓰기,
               손상된 JSON 거부, stdin 개행 보존, 원자적 래퍼 복사,
@@ -331,16 +331,17 @@
               글롭 안전성을 수정했습니다.
             </p>
             <p>
-              Codex GitHub 봇(PR #3)이 3라운드 상한으로 실행되었습니다:
-              1차(4건 수정 — 만료된 플래그 표시, 백업 권한 0600/0700,
-              프로젝트-shadow 경고, 형제 <code>statusLine</code> 키 보존);
-              2차(4건 수정 — 실수로 커밋된 스크래치 파일 제거,
-              <code>printf %q</code> 경로 이스케이핑, 원자적 심볼릭 링크
-              쓰기, README 수동 스니펫 만료); 3차(4건 수정 — macOS/BSD를
-              위한 이식성 있는 <code>resolve_symlink</code>, 내부
-              <code>eval</code> 주변의 <code>set +u</code>, 상위 경로
-              순회 shadow 검사, 플러그인 제거 전 uninstall 안내 문서).
-              테스트가 22개 → 43개로 늘었습니다.
+              이후 Codex GitHub 봇이 4라운드를 진행했습니다: 1차 —
+              만료된 플래그 표시, 백업 권한 0600/0700, 프로젝트-shadow
+              경고, 형제 <code>statusLine</code> 키 보존; 2차 — 실수로
+              커밋된 스크래치 파일 제거, <code>printf %q</code> 경로
+              이스케이핑, 원자적 심볼릭 링크 쓰기, README 수동 스니펫
+              만료; 3차 — macOS/BSD를 위한 이식성 있는
+              <code>resolve_symlink</code>, 내부 <code>eval</code> 주변의
+              <code>set +u</code>, 상위 경로 순회 shadow 검사, 플러그인
+              제거 전 uninstall 안내 문서; 4차 — 이상 없음("Didn't find
+              any major issues"). 4라운드 동안 총 20건이 발견되어 20건
+              수정, 0건 보류되었습니다. 테스트가 22개 → 43개로 늘었습니다.
             </p>
           </div>
 

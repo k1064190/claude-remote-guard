@@ -85,6 +85,10 @@ to the nearest ancestor `.claude/`. (P2) README uninstall guidance now tells sta
 users to run `/guard-statusline uninstall` before removing the plugin (else a stale
 wrapper keeps rendering). Tests 41 → 43.
 
+Round 4 (verification pass on the round-3 fixes): **clean** — "Codex Review: Didn't
+find any major issues." on commit `0b95b34`. Across 4 bot rounds, 20 findings raised,
+20 fixed, 0 deferred.
+
 **Retrospective** — Composition (record inner → wrap → restore) is what makes this
 conflict-free with any status line; the copy-to-stable-path step is the non-obvious
 bit that keeps `settings.json` valid across plugin updates.

@@ -320,23 +320,25 @@
           <div class="field">
             <h4>Review loop</h4>
             <p>
-              <code>code-reviewer-pro</code> + Codex (gpt-5.5) + Antigravity
-              (Gemini 3.1 Pro) reviewed before the PR: fixed path quoting for
-              spaces, <code>jq --arg</code>/<code>--argjson</code> (no
-              injection), atomic same-fs settings write, malformed-JSON
+              Reviewed pre-PR by <code>code-reviewer-pro</code>, Codex
+              (gpt-5.5), and Antigravity (Gemini 3.1 Pro): fixed path
+              quoting for spaces, <code>jq --arg</code>/<code>--argjson</code>
+              (no injection), atomic same-fs settings write, malformed-JSON
               refusal, stdin-newline preservation, atomic wrapper copy,
               symlinked-settings write-through, arg glob-safety.
             </p>
             <p>
-              Codex GitHub bot (PR #3) ran the 3-round cap: round 1 (4 fixed —
+              The Codex GitHub bot then ran four rounds: round 1 —
               expired-flag display, 0600/0700 backup perms, project-shadow
-              warning, preserve sibling <code>statusLine</code> keys); round 2
-              (4 fixed — removed accidentally-committed scratch files,
+              warning, preserve sibling <code>statusLine</code> keys; round 2
+              — removed accidentally-committed scratch files,
               <code>printf %q</code> path escaping, atomic symlink write,
-              README manual snippet expiry); round 3 (4 fixed — portable
+              README manual-snippet expiry; round 3 — portable
               <code>resolve_symlink</code> for macOS/BSD, <code>set +u</code>
               around inner <code>eval</code>, ancestor-walk shadow check,
-              uninstall-before-plugin-uninstall docs). Tests grew 22 → 43.
+              uninstall-before-plugin-uninstall docs; round 4 — clean
+              ("Didn't find any major issues"). Across 4 bot rounds: 20
+              findings raised, 20 fixed, 0 deferred. Tests grew 22 → 43.
             </p>
           </div>
 
