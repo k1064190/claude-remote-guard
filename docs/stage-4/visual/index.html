@@ -242,114 +242,95 @@
       </div>
       <div class="node-row">
         <div class="node">
-          <span class="dot current"></span>
-          <span class="node-label current">Stage 2</span>
+          <span class="dot"></span>
+          <span class="node-label">Stage 2</span>
         </div>
         <div class="connector"></div>
       </div>
       <div class="node-row">
         <div class="node">
-          <span class="dot future"></span>
+          <span class="dot"></span>
           <span class="node-label">Stage 3</span>
         </div>
         <div class="connector"></div>
       </div>
       <div class="node-row">
         <div class="node">
-          <span class="dot future"></span>
-          <span class="node-label">Stage 4</span>
+          <span class="dot current"></span>
+          <span class="node-label current">Stage 4</span>
         </div>
       </div>
     </nav>
 
     <section class="stage">
-      <h2>Stage 2</h2>
-      <p class="stage-summary">Made <code>/unguard</code> bypasses time-boxed and optionally persistent, so the guard can re-arm itself instead of relying on a blanket session reset.</p>
+      <h2>Stage 4</h2>
+      <p class="stage-summary">Made bare <code>/unguard</code> walk through setup interactively, so configuring a bypass no longer requires remembering the argument syntax.</p>
 
       <div class="grid">
         <article class="card">
-          <h3>Unguard TTL Persist</h3>
+          <h3>Unguard Interactive</h3>
 
           <div class="field">
             <h4>Why</h4>
             <p>
-              Re-running <code>/unguard</code> every session was annoying when
-              the user knows what they're doing; a blanket SessionStart
-              <code>rm -f</code> reset every bypass on each restart. The user
-              wanted the reset itself controllable from the command, ideally
-              time-boxed so the guard re-arms on its own.
+              Bare <code>/unguard</code> only printed the state; configuring
+              still required remembering the argument syntax
+              (<code>write 30m</code>, <code>all persist</code>, …). Doctor Cho
+              wanted a no-argument call to walk through the setup interactively.
             </p>
           </div>
 
           <div class="field">
             <h4>What</h4>
-            <p><code>/unguard &lt;read|write|all&gt; [30m|2h|45s|N|persist]</code>:</p>
-            <ul>
-              <li>duration → bypass survives restarts, auto-expires (max 24h; bare number = minutes); mid-session expiry re-arms the guard on the very next guarded command</li>
-              <li><code>persist</code> → survives until <code>/unguard off</code></li>
-              <li>no argument → unchanged session-scoped flip (100% backward compatible)</li>
-              <li><code>status</code> shows remaining time</li>
-            </ul>
+            <p>
+              <code>/unguard</code> with no arguments now: shows the current
+              state, then asks one AskUserQuestion with two questions —
+              <strong>Action</strong> (write / read / all / off, already-ON
+              options marked) and <strong>Scope</strong> (this session only /
+              30m / 2h / persist, "Other" passes custom durations like
+              <code>45m</code> through) — and runs the toggle with the
+              selection. With arguments, behavior is unchanged (relay only).
+              <code>/unguard status</code> stays the question-free way to just
+              look.
+            </p>
           </div>
 
           <div class="field">
             <h4>How</h4>
             <p>
-              The flag file contents encode the mode: empty = session, digits =
-              expiry epoch, <code>persist</code> = permanent, anything else =
-              inactive (never under-protects). The SessionStart hook was
-              changed from a blanket <code>rm -f</code> to
-              <code>guard-remote-session-reset.sh</code>, which only clears
-              session-scoped, expired, or unrecognized flags.
-              <code>guard-remote-ops.sh</code> gained <code>flag_active()</code>
-              which does the same expiry check per command. The
-              <code>/unguard</code> slash command passes all args as one word,
-              so the toggle script re-splits <code>$*</code>.
+              Command-markdown-only change: the <code>!</code> line already
+              renders the passed arguments, so the instructions branch on
+              whether the quoted string is empty. <code>allowed-tools</code>
+              gained <code>AskUserQuestion</code>. The model is instructed to
+              never pick an action/scope on its own —
+              <code>disable-model-invocation</code> still keeps the model from
+              invoking the command at all. No script changes; both test suites
+              unchanged and green (68 + 26).
             </p>
           </div>
 
           <div class="field">
             <h4>Review loop</h4>
             <p>
-              <code>code-reviewer-pro</code> subagent flagged a check-then-read
-              race: a flag deleted between <code>[ -f ]</code> and
-              <code>cat</code> reads as <code>''</code> → wrongly "session
-              bypass active". Fixed in <code>flag_active()</code> and
-              <code>state()</code> (<code>cat … || return inactive</code>,
-              commit <code>c1c61a7</code>). Dismissed: the same race in the
-              session-reset script (outcome is still correct — the file ends
-              up deleted) and an extra-argument usage warning (out of scope).
-              Codex PR review runs on the PR.
-            </p>
-            <p>
-              Codex GitHub bot (PR #2, round 1) found three real issues, all
-              fixed (commit <code>b32de9d</code>): an overflow-sized duration
-              silently bypassed the 24h cap — digit length now capped before
-              arithmetic; leading-zero durations parsed as octal
-              (<code>010m</code> = 8min) — forced base 10; flipping a stale
-              expired flag only deleted it (needed two <code>/unguard</code>s)
-              — flip/<code>all</code> now treat expired/unrecognized flags as
-              OFF. Round 2: clean ("no major issues").
+              Codex GitHub bot on PR: see PR record. (Prompt-only diff; no
+              shell code changed.)
             </p>
           </div>
 
           <div class="field">
             <h4>Code locations</h4>
             <ul class="codelist">
-              <li><code>scripts/guard-remote-toggle.sh</code> — duration/persist parsing, TTL write, status with remaining time</li>
-              <li><code>scripts/guard-remote-ops.sh:83-101</code> — <code>flag_active()</code> expiry-aware bypass check</li>
-              <li><code>scripts/guard-remote-session-reset.sh</code> — new SessionStart cleanup</li>
-              <li><code>hooks/hooks.json</code> — SessionStart now calls the reset script</li>
-              <li><code>tests/test-guard-remote-toggle.sh</code> (new, 20 asserts), <code>tests/test-guard-remote-ops.sh</code> (TTL/persist flag-content cases)</li>
+              <li><code>commands/unguard.md</code> — interactive branch instructions, allowed-tools</li>
+              <li><code>README.md</code> — usage lines for bare <code>/unguard</code> and <code>/unguard status</code></li>
+              <li><code>.claude-plugin/plugin.json</code> — version 0.3.0</li>
             </ul>
           </div>
 
           <div class="field">
             <h4>Retrospective</h4>
             <p class="retro">
-              Encoding the mode in flag contents kept the old empty-file format
-              valid, so everything stayed backward compatible with no
-              migration.
+              The slash-command markdown is itself the interface layer, so
+              "interactivity" belongs there, not in the bash script.
             </p>
           </div>
         </article>

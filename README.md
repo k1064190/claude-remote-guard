@@ -45,7 +45,8 @@ Updates: `claude plugin update remote-guard` (or auto-update on launch).
 ## Usage — `/unguard`
 
 ```
-/unguard            # show current bypass state (with remaining time if timed)
+/unguard            # show current state, then configure interactively
+                    # (pick read/write/all/off and a scope: session, 30m, 2h, persist)
 /unguard read       # toggle the read(조회) bypass for this session
 /unguard write      # toggle the write(변경·삭제·ssh) bypass for this session
 /unguard all        # toggle both for this session
@@ -53,6 +54,7 @@ Updates: `claude plugin update remote-guard` (or auto-update on launch).
 /unguard all 2h     # both bypasses for 2 hours (also: 45s; bare number = minutes; max 24h)
 /unguard read persist   # read bypass until explicitly turned off
 /unguard off        # clear both (re-enable the guard now)
+/unguard status     # just show the state (with remaining time if timed), no questions
 ```
 
 `/unguard` is explicit-invocation only (`disable-model-invocation`), so the model

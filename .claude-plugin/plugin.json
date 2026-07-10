@@ -1,7 +1,7 @@
 {
   "name": "remote-guard",
   "displayName": "Remote/Cloud Guard",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Forces a yes/no approval before any remote/cloud command (gcloud, gsutil, bq, aws, az, kubectl, ssh, scp, terraform) and container registry push/login (docker, podman, nerdctl), classifying read vs write, with a /unguard bypass toggle (session-scoped, timed 30m/2h, or persist).",
   "author": {
     "name": "Woohyun Cho",
