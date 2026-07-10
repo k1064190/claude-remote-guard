@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Remote/Cloud Guard — Staged plan progress</title>
+  <title>Remote/Cloud Guard — 단계별 진행 상황</title>
   <style>
     :root {
       --bg: #f7f7f5;
@@ -223,133 +223,124 @@
     <header class="page-header">
       <div>
         <h1>Remote/Cloud Guard</h1>
-        <p class="subtitle">Staged plan progress</p>
+        <p class="subtitle">단계별 진행 상황</p>
       </div>
-      <nav class="lang" aria-label="Language">
-        <span class="current">EN</span>
+      <nav class="lang" aria-label="언어">
+        <a href="index.html" lang="en">EN</a>
         <span class="sep">|</span>
-        <a href="index.ko.html" lang="ko">한국어</a>
+        <span class="current">한국어</span>
       </nav>
     </header>
 
-    <nav class="timeline" aria-label="Stage timeline">
+    <nav class="timeline" aria-label="단계 타임라인">
       <div class="node-row">
         <div class="node">
           <span class="dot"></span>
-          <span class="node-label">Stage 1</span>
+          <span class="node-label">1단계</span>
+        </div>
+        <div class="connector"></div>
+      </div>
+      <div class="node-row">
+        <div class="node">
+          <span class="dot"></span>
+          <span class="node-label">2단계</span>
+        </div>
+        <div class="connector"></div>
+      </div>
+      <div class="node-row">
+        <div class="node">
+          <span class="dot"></span>
+          <span class="node-label">3단계</span>
         </div>
         <div class="connector"></div>
       </div>
       <div class="node-row">
         <div class="node">
           <span class="dot current"></span>
-          <span class="node-label current">Stage 2</span>
-        </div>
-        <div class="connector"></div>
-      </div>
-      <div class="node-row">
-        <div class="node">
-          <span class="dot future"></span>
-          <span class="node-label">Stage 3</span>
-        </div>
-        <div class="connector"></div>
-      </div>
-      <div class="node-row">
-        <div class="node">
-          <span class="dot future"></span>
-          <span class="node-label">Stage 4</span>
+          <span class="node-label current">4단계</span>
         </div>
       </div>
     </nav>
 
     <section class="stage">
-      <h2>Stage 2</h2>
-      <p class="stage-summary">Made <code>/unguard</code> bypasses time-boxed and optionally persistent, so the guard can re-arm itself instead of relying on a blanket session reset.</p>
+      <h2>4단계</h2>
+      <p class="stage-summary">인자 없는 <code>/unguard</code>가 설정 과정을 대화형으로 안내하도록 하여, 우회를 설정할 때 더 이상 인자 문법을 외울 필요가 없게 했습니다.</p>
 
       <div class="grid">
         <article class="card">
-          <h3>Unguard TTL Persist</h3>
+          <h3>Unguard Interactive</h3>
 
           <div class="field">
-            <h4>Why</h4>
+            <h4>왜</h4>
             <p>
-              Re-running <code>/unguard</code> every session was annoying when
-              the user knows what they're doing; a blanket SessionStart
-              <code>rm -f</code> reset every bypass on each restart. The user
-              wanted the reset itself controllable from the command, ideally
-              time-boxed so the guard re-arms on its own.
+              인자 없는 <code>/unguard</code>는 상태만 출력했고, 설정하려면
+              여전히 인자 문법(<code>write 30m</code>, <code>all persist</code>,
+              …)을 외워야 했습니다. Doctor Cho는 인자 없는 호출이 설정 과정을
+              대화형으로 안내하기를 원했습니다.
             </p>
           </div>
 
           <div class="field">
-            <h4>What</h4>
-            <p><code>/unguard &lt;read|write|all&gt; [30m|2h|45s|N|persist]</code>:</p>
-            <ul>
-              <li>duration → bypass survives restarts, auto-expires (max 24h; bare number = minutes); mid-session expiry re-arms the guard on the very next guarded command</li>
-              <li><code>persist</code> → survives until <code>/unguard off</code></li>
-              <li>no argument → unchanged session-scoped flip (100% backward compatible)</li>
-              <li><code>status</code> shows remaining time</li>
-            </ul>
-          </div>
-
-          <div class="field">
-            <h4>How</h4>
+            <h4>무엇을</h4>
             <p>
-              The flag file contents encode the mode: empty = session, digits =
-              expiry epoch, <code>persist</code> = permanent, anything else =
-              inactive (never under-protects). The SessionStart hook was
-              changed from a blanket <code>rm -f</code> to
-              <code>guard-remote-session-reset.sh</code>, which only clears
-              session-scoped, expired, or unrecognized flags.
-              <code>guard-remote-ops.sh</code> gained <code>flag_active()</code>
-              which does the same expiry check per command. The
-              <code>/unguard</code> slash command passes all args as one word,
-              so the toggle script re-splits <code>$*</code>.
+              인자 없는 <code>/unguard</code>는 이제: 현재 상태를 보여준 뒤,
+              두 개의 질문으로 하나의 AskUserQuestion을 던집니다 —
+              <strong>Action</strong>(write / read / all / off, 이미 ON인
+              옵션은 표시됨)과 <strong>Scope</strong>(이번 세션만 / 30m / 2h /
+              persist, "Other"는 <code>45m</code> 같은 사용자 지정 지속
+              시간을 그대로 전달) — 그리고 선택 결과로 토글을 실행합니다.
+              인자가 있으면 동작은 그대로입니다(전달만). <code>/unguard
+              status</code>는 질문 없이 그냥 확인하는 방법으로 유지됩니다.
             </p>
           </div>
 
           <div class="field">
-            <h4>Review loop</h4>
+            <h4>어떻게</h4>
             <p>
-              <code>code-reviewer-pro</code> subagent flagged a check-then-read
-              race: a flag deleted between <code>[ -f ]</code> and
-              <code>cat</code> reads as <code>''</code> → wrongly "session
-              bypass active". Fixed in <code>flag_active()</code> and
-              <code>state()</code> (<code>cat … || return inactive</code>,
-              commit <code>c1c61a7</code>). Dismissed: the same race in the
-              session-reset script (outcome is still correct — the file ends
-              up deleted) and an extra-argument usage warning (out of scope).
-              Codex PR review runs on the PR.
-            </p>
-            <p>
-              Codex GitHub bot (PR #2, round 1) found three real issues, all
-              fixed (commit <code>b32de9d</code>): an overflow-sized duration
-              silently bypassed the 24h cap — digit length now capped before
-              arithmetic; leading-zero durations parsed as octal
-              (<code>010m</code> = 8min) — forced base 10; flipping a stale
-              expired flag only deleted it (needed two <code>/unguard</code>s)
-              — flip/<code>all</code> now treat expired/unrecognized flags as
-              OFF. Round 2: clean ("no major issues").
+              커맨드 markdown만 바꾼 변경입니다: <code>!</code> 줄이 이미
+              전달된 인자를 렌더링하므로, 지시문은 인용된 문자열이 비어
+              있는지 여부로 분기합니다. <code>allowed-tools</code>에
+              <code>AskUserQuestion</code>이 추가되었습니다. 모델은 스스로
+              action/scope를 고르지 않도록 지시받으며 —
+              <code>disable-model-invocation</code>은 여전히 모델이 명령을
+              아예 호출하지 못하도록 막습니다. 스크립트 변경은 없으며, 두
+              테스트 스위트 모두 그대로 통과합니다(68 + 26).
             </p>
           </div>
 
           <div class="field">
-            <h4>Code locations</h4>
+            <h4>리뷰 루프</h4>
+            <p>
+              Codex GitHub 봇을 사용할 수 없어(사용량 한도 도달)
+              <code>code-reviewer-pro</code> 서브에이전트 패스로 대체했습니다.
+              적용됨: "Other" 자유 입력 scope는 이제 모델이 명령에 넣기 전에
+              허용 목록으로 검사됩니다(<code>^[0-9]{1,6}[hms]?$</code> 또는
+              <code>persist</code>, 인젝션 표면), 그리고 Action 질문은
+              <code>all</code>이 둘을 함께 토글한다는 점(ON+OFF → 둘 다 OFF)을
+              명시합니다. 수용 및 문서화됨: 대화형 방식은 본질적으로 토글 실행을
+              결정론적인 <code>!</code> 줄에서 모델이 발행하는 Bash 호출로
+              옮깁니다 — 이제 보장은 "사용자가 입력한 인자만"이 아니라 "명시적인
+              사용자 선택 + 프롬프트 지시"입니다. 반려됨: 빈 입력 대
+              <code>status</code> 분기 탐지(치환된 인자 문자열은 렌더링된
+              <code>!</code> 줄에 보이며, 최악의 경우라도 무해한 추가 질문
+              하나일 뿐).
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>코드 위치</h4>
             <ul class="codelist">
-              <li><code>scripts/guard-remote-toggle.sh</code> — duration/persist parsing, TTL write, status with remaining time</li>
-              <li><code>scripts/guard-remote-ops.sh:83-101</code> — <code>flag_active()</code> expiry-aware bypass check</li>
-              <li><code>scripts/guard-remote-session-reset.sh</code> — new SessionStart cleanup</li>
-              <li><code>hooks/hooks.json</code> — SessionStart now calls the reset script</li>
-              <li><code>tests/test-guard-remote-toggle.sh</code> (new, 20 asserts), <code>tests/test-guard-remote-ops.sh</code> (TTL/persist flag-content cases)</li>
+              <li><code>commands/unguard.md</code> — 대화형 분기 지시문, allowed-tools</li>
+              <li><code>README.md</code> — 인자 없는 <code>/unguard</code>와 <code>/unguard status</code>의 사용법 줄</li>
+              <li><code>.claude-plugin/plugin.json</code> — 버전 0.3.0</li>
             </ul>
           </div>
 
           <div class="field">
-            <h4>Retrospective</h4>
+            <h4>회고</h4>
             <p class="retro">
-              Encoding the mode in flag contents kept the old empty-file format
-              valid, so everything stayed backward compatible with no
-              migration.
+              슬래시 커맨드 markdown 자체가 인터페이스 계층이므로,
+              "대화형" 기능은 bash 스크립트가 아니라 거기에 속합니다.
             </p>
           </div>
         </article>

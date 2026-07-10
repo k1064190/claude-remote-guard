@@ -8,3 +8,6 @@
 
 ## Stage 3 — Status-line indicator
 - [statusline-indicator](stage-3/statusline-indicator.md) — `/guard-statusline install` composes a `🔒 guard: armed` / `🔓 bypass` line on top of any existing status line (records inner → wraps → restores verbatim); survives plugin updates via a stable wrapper copy.
+
+## Stage 4 — Interactive /unguard
+- [unguard-interactive](stage-4/unguard-interactive.md) — bare `/unguard` shows the state then configures via AskUserQuestion (action + scope); with arguments unchanged; command-markdown-only change, v0.3.0.
