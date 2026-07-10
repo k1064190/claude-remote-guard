@@ -311,8 +311,19 @@
           <div class="field">
             <h4>리뷰 루프</h4>
             <p>
-              PR에서의 Codex GitHub 봇: PR 기록 참조. (프롬프트만 바뀐 diff이며
-              셸 코드는 변경 없음.)
+              Codex GitHub 봇을 사용할 수 없어(사용량 한도 도달)
+              <code>code-reviewer-pro</code> 서브에이전트 패스로 대체했습니다.
+              적용됨: "Other" 자유 입력 scope는 이제 모델이 명령에 넣기 전에
+              허용 목록으로 검사됩니다(<code>^[0-9]{1,6}[hms]?$</code> 또는
+              <code>persist</code>, 인젝션 표면), 그리고 Action 질문은
+              <code>all</code>이 둘을 함께 토글한다는 점(ON+OFF → 둘 다 OFF)을
+              명시합니다. 수용 및 문서화됨: 대화형 방식은 본질적으로 토글 실행을
+              결정론적인 <code>!</code> 줄에서 모델이 발행하는 Bash 호출로
+              옮깁니다 — 이제 보장은 "사용자가 입력한 인자만"이 아니라 "명시적인
+              사용자 선택 + 프롬프트 지시"입니다. 반려됨: 빈 입력 대
+              <code>status</code> 분기 탐지(치환된 인자 문자열은 렌더링된
+              <code>!</code> 줄에 보이며, 최악의 경우라도 무해한 추가 질문
+              하나일 뿐).
             </p>
           </div>
 

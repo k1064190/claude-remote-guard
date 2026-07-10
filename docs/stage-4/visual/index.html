@@ -312,8 +312,20 @@
           <div class="field">
             <h4>Review loop</h4>
             <p>
-              Codex GitHub bot on PR: see PR record. (Prompt-only diff; no
-              shell code changed.)
+              Codex GitHub bot unavailable (usage limit reached); replaced by a
+              <code>code-reviewer-pro</code> subagent pass. Applied: "Other"
+              free-text scope is now allow-listed
+              (<code>^[0-9]{1,6}[hms]?$</code> or <code>persist</code>) before
+              the model may place it in the command (injection surface), and the
+              Action question notes that <code>all</code> toggles both together
+              (ON+OFF → both OFF). Accepted &amp; documented: interactivity
+              inherently moves the toggle execution from the deterministic
+              <code>!</code>-line to a model-issued Bash call — the guarantee is
+              now "explicit user selection + prompt instruction" instead of
+              "user-typed arguments only". Dismissed: empty-vs-<code>status</code>
+              branch detection (the substituted argument string is visible on
+              the rendered <code>!</code> line; worst case is a harmless extra
+              question).
             </p>
           </div>
 

@@ -24,8 +24,16 @@ and green (68 + 26).
 - `README.md` — usage lines for bare `/unguard` and `/unguard status`
 - `.claude-plugin/plugin.json` — version 0.3.0
 
-**Review loop** — Codex GitHub bot on PR: see PR record. (Prompt-only diff;
-no shell code changed.)
+**Review loop** — Codex GitHub bot unavailable (usage limit reached); replaced
+by a `code-reviewer-pro` subagent pass. Applied: "Other" free-text scope is now
+allow-listed (`^[0-9]{1,6}[hms]?$` or `persist`) before the model may place it
+in the command (injection surface), and the Action question notes that `all`
+toggles both together (ON+OFF → both OFF). Accepted & documented: interactivity
+inherently moves the toggle execution from the deterministic `!`-line to a
+model-issued Bash call — the guarantee is now "explicit user selection +
+prompt instruction" instead of "user-typed arguments only". Dismissed:
+empty-vs-`status` branch detection (the substituted argument string is visible
+on the rendered `!` line; worst case is a harmless extra question).
 
 **Retrospective** — The slash-command markdown is itself the interface layer,
 so "interactivity" belongs there, not in the bash script.
