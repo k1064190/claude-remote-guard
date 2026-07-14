@@ -11,3 +11,6 @@
 
 ## Stage 4 — Interactive /unguard
 - [unguard-interactive](stage-4/unguard-interactive.md) — bare `/unguard` shows the state then configures via AskUserQuestion (action + scope); with arguments unchanged; command-markdown-only change, v0.3.0.
+
+## Stage 5 — Codex CLI compatibility (investigation + handoff)
+- [codex-compatibility](stage-5/codex-compatibility.md) — measured against Codex CLI 0.144.3: the plugin **installs cleanly and protects nothing** (matcher `Bash` vs Codex's `shell`/`exec`, command not in `tool_input.command`, hooks silently skipped without trust). No code changed; README now warns, and the doc carries the evidence, repro steps, open question, and the work list for real support.
