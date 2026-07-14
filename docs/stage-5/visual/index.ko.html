@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Remote/Cloud Guard — 단계별 진행 상황</title>
+  <style>
+    :root {
+      --bg: #f7f7f5;
+      --card: #fcfcfb;
+      --border: #e2e2dd;
+      --text: #20242a;
+      --muted: #6a7079;
+      --accent: #1f6f6b;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+    header.page-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    header.page-header h1 {
+      margin: 0;
+      font-size: 1.65rem;
+      letter-spacing: -0.01em;
+    }
+    header.page-header .subtitle {
+      margin: 0.25rem 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    nav.lang {
+      font-size: 0.9rem;
+      color: var(--muted);
+      white-space: nowrap;
+      padding-top: 0.35rem;
+    }
+    nav.lang a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    nav.lang a:hover {
+      text-decoration: underline;
+    }
+    nav.lang .current {
+      color: var(--muted);
+    }
+    nav.lang .sep {
+      margin: 0 0.45rem;
+      color: var(--border);
+    }
+    nav.timeline {
+      display: flex;
+      align-items: center;
+      margin: 0 0 2.5rem;
+      padding: 0.5rem 0;
+    }
+    .node-row {
+      display: flex;
+      align-items: center;
+      flex: 1;
+    }
+    .node-row:last-child {
+      flex: 0 0 auto;
+    }
+    .node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      flex: 0 0 auto;
+    }
+    .node .dot {
+      width: 1.15rem;
+      height: 1.15rem;
+      border-radius: 50%;
+      background: var(--muted);
+      border: 3px solid var(--muted);
+    }
+    .node .dot.current {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(31, 111, 107, 0.14);
+    }
+    .node .dot.future {
+      background: transparent;
+      border-color: var(--accent);
+    }
+    .node .node-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .node .node-label.current {
+      color: var(--accent);
+    }
+    .connector {
+      height: 2px;
+      background: var(--border);
+      flex: 1;
+      margin: 0 0.6rem;
+      align-self: flex-start;
+      margin-top: 0.57rem;
+    }
+    section.stage h2 {
+      margin: 0 0 0.35rem;
+      font-size: 1.3rem;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
+    section.stage .stage-summary {
+      margin: 0 0 1.5rem;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+    article.card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem 1.5rem 1.75rem;
+    }
+    article.card h3 {
+      margin: 0 0 1rem;
+      font-size: 1.15rem;
+      letter-spacing: -0.01em;
+    }
+    .field {
+      margin-bottom: 1.1rem;
+    }
+    .field:last-child {
+      margin-bottom: 0;
+    }
+    .field h4 {
+      margin: 0 0 0.35rem;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+    }
+    .field p {
+      margin: 0 0 0.6rem;
+    }
+    .field p:last-child {
+      margin-bottom: 0;
+    }
+    .field ul {
+      margin: 0.3rem 0 0.6rem;
+      padding-left: 1.2rem;
+    }
+    .field ul:last-child {
+      margin-bottom: 0;
+    }
+    .field li {
+      margin-bottom: 0.3rem;
+    }
+    .field ol {
+      margin: 0.3rem 0 0.6rem;
+      padding-left: 1.35rem;
+    }
+    .field ol:last-child {
+      margin-bottom: 0;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.85em;
+      background: #eef1ef;
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+      color: #243b39;
+    }
+    pre {
+      margin: 0.5rem 0 0.6rem;
+      padding: 0.75rem 0.9rem;
+      background: #eef1ef;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+    pre:last-child {
+      margin-bottom: 0;
+    }
+    pre code {
+      display: block;
+      background: none;
+      padding: 0;
+      font-size: 0.8rem;
+      line-height: 1.55;
+      white-space: pre;
+    }
+    .codelist {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .codelist li {
+      margin-bottom: 0.45rem;
+      line-height: 1.5;
+    }
+    .codelist li:last-child {
+      margin-bottom: 0;
+    }
+    .retro {
+      font-style: italic;
+      color: #353b42;
+    }
+    @media (max-width: 720px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      header.page-header {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="page-header">
+      <div>
+        <h1>Remote/Cloud Guard</h1>
+        <p class="subtitle">단계별 진행 상황</p>
+      </div>
+      <nav class="lang" aria-label="언어">
+        <a href="index.html" lang="en">EN</a>
+        <span class="sep">|</span>
+        <span class="current">한국어</span>
+      </nav>
+    </header>
+
+    <nav class="timeline" aria-label="단계 타임라인">
+      <div class="node-row">
+        <div class="node">
+          <span class="dot"></span>
+          <span class="node-label">1단계</span>
+        </div>
+        <div class="connector"></div>
+      </div>
+      <div class="node-row">
+        <div class="node">
+          <span class="dot"></span>
+          <span class="node-label">2단계</span>
+        </div>
+        <div class="connector"></div>
+      </div>
+      <div class="node-row">
+        <div class="node">
+          <span class="dot"></span>
+          <span class="node-label">3단계</span>
+        </div>
+        <div class="connector"></div>
+      </div>
+      <div class="node-row">
+        <div class="node">
+          <span class="dot"></span>
+          <span class="node-label">4단계</span>
+        </div>
+        <div class="connector"></div>
+      </div>
+      <div class="node-row">
+        <div class="node">
+          <span class="dot current"></span>
+          <span class="node-label current">5단계</span>
+        </div>
+      </div>
+    </nav>
+
+    <section class="stage">
+      <h2>5단계</h2>
+      <p class="stage-summary">조사 전용, 코드 변경 없음: 이 플러그인을 Codex CLI에 대해 측정한 결과 — 설치는 깔끔하게 되지만 아무것도 보호하지 못합니다 — 그래서 <code>README.md</code>는 이 플러그인이 Claude Code 전용임을 분명히 밝힙니다.</p>
+
+      <div class="grid">
+        <article class="card">
+          <h3>Codex CLI Compatibility</h3>
+
+          <div class="field">
+            <h4>왜</h4>
+            <p>
+              Doctor Cho가 remote-guard가 Codex CLI에서 동작하는지 물었습니다.
+              이것은 평범한 이식성 질문보다 더 중요합니다: 이 플러그인의 존재
+              이유 자체가 조용한 우회를 막는 것이므로, "설치는 되지만 보호하지는
+              않는" 상태는 최악의 결과이며 — 아예 설치하지 않는 것보다
+              나쁩니다.
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>무엇을</h4>
+            <p>
+              <strong>Codex CLI 0.144.3</strong>을 대상으로, 일회용
+              <code>CODEX_HOME</code>에서 테스트했습니다(실제
+              <code>~/.codex/config.toml</code>은 이후에 그대로임을
+              확인했습니다).
+            </p>
+            <p>
+              <strong>좋은 소식 — Codex는 Claude Code 플러그인 형식을 상당 부분
+              채택했습니다.</strong>
+            </p>
+            <ul>
+              <li><code>codex plugin marketplace add &lt;repo&gt;</code>가 우리의 <code>.claude-plugin/marketplace.json</code>을 읽습니다.</li>
+              <li><code>codex plugin add remote-guard@cho-plugins</code>가 <strong>성공</strong>하며, 플러그인을 <code>$CODEX_HOME/plugins/cache/cho-plugins/remote-guard/0.3.0</code>에 캐시하고 <code>config.toml</code>에 <code>[plugins."remote-guard@cho-plugins"] enabled = true</code>를 씁니다.</li>
+              <li>Codex는 <strong>동일한 훅 이벤트 이름</strong>을 가집니다: <code>PreToolUse</code>, <code>PostToolUse</code>, <code>SessionStart</code>, <code>PreCompact</code>, <code>PostCompact</code>, <code>SubagentStart</code>, <code>SubagentStop</code>.</li>
+              <li>Codex는 <strong>동일한 훅 와이어 포맷</strong>을 사용합니다: 입력은 <code>tool_name</code> / <code>tool_input</code>을 담고, 출력은 <code>hookSpecificOutput</code> / <code>hookEventName</code> / <code>permissionDecision</code> / <code>permissionDecisionReason</code> / <code>systemMessage</code> / <code>continue</code>를 인식합니다.</li>
+            </ul>
+            <p>
+              <strong>나쁜 소식 — 설치는 되지만 아무것도 보호하지
+              않습니다.</strong> 서로 독립적인 세 가지 고장이 있으며, 그중 하나만
+              있어도 치명적입니다:
+            </p>
+            <ol>
+              <li>
+                <strong>매처 불일치.</strong> <code>hooks/hooks.json</code>은
+                <code>Bash</code>에 매칭합니다. Codex의 셸 도구 이름은
+                <code>shell</code>이고, 사용 중인 모델/설정(<code>gpt-5.6-sol</code>,
+                코드 모드)에서 실제 호출은 <code>exec</code>라는 이름의
+                <code>custom_tool_call</code>이었습니다. <code>Bash</code>는 결코
+                매칭되지 않으므로 훅은 아예 실행되지 않습니다.
+              </li>
+              <li>
+                <strong>페이로드 형태 불일치.</strong> Codex는
+                <code>tool_input.command</code>에 명령 문자열을 전달하지
+                않았습니다. 관측된 도구 호출은 명령을 JavaScript 스니펫 안에
+                담고 있었습니다:
+<pre><code>{"type":"custom_tool_call","name":"exec",
+ "input":"const r = await tools.exec_command({\"cmd\":\"echo HELLO_PROBE\",\"login\":false,...});"}</code></pre>
+                <code>guard-remote-ops.sh</code>는
+                <code>jq -r '.tool_input.command // empty'</code>를 수행 → 빈 값 →
+                <code>exit 0</code> → 명령이 보호 없이 실행됩니다. 이 형태는
+                <strong>모델/기능에 따라 달라진다</strong>는 점(코드 모드 대 평범한
+                <code>shell</code> 도구)에 유의해야 하며, 따라서 어떤 파서든 한
+                가지 이상의 형태를 처리해야 합니다.
+              </li>
+              <li>
+                <strong>훅 신뢰(hook trust).</strong> Codex는 지속되는 훅
+                신뢰(<code>trusted_hash</code>)를 요구합니다. 이것이 없으면 훅은
+                <strong>조용히 건너뛰어집니다 — 오류도, 경고도 없습니다</strong>.
+                <code>config.toml</code>에 등록한 프로브 훅은 발화하지 않았고 그에
+                대해 아무 말도 하지 않았습니다. 탈출구는
+                <code>--dangerously-bypass-hook-trust</code>이며, 우리는 의도적으로
+                사용하지 않았습니다.
+              </li>
+            </ol>
+            <p>
+              별개로, <strong><code>/unguard</code>는 Codex에서 아예 동작할 수
+              없습니다</strong>: 이 명령은 Claude Code의 <code>!</code> bash 실행
+              줄과 <code>AskUserQuestion</code> 도구에 의존하는 프롬프트 파일인데,
+              Codex에는 둘 다 없습니다.
+            </p>
+            <p>
+              순 효과: Codex에서는 <code>plugin add</code>가 성공을 보고하고, 어떤
+              오류도 표면화되지 않으며, <code>aws …</code> /
+              <code>docker push …</code>가 아무 확인 없이 실행됩니다.
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>어떻게</h4>
+            <p>재현 방법:</p>
+<pre><code>export CODEX_HOME=$(mktemp -d ~/codex-test.XXXX)   # NOT /tmp — codex refuses PATH aliases there
+cp ~/.codex/auth.json "$CODEX_HOME/"
+codex plugin marketplace add /path/to/claude-remote-guard
+codex plugin add remote-guard@cho-plugins          # succeeds
+codex exec --sandbox read-only --skip-git-repo-check "Run exactly this shell command and nothing else: echo PROBE"
+# then read the tool call that was actually issued:
+python3 -c 'import json,sys
+for l in open(sys.argv[1]):
+    o=json.loads(l); p=o.get("payload",{})
+    if p.get("type")=="custom_tool_call": print(json.dumps(p)[:400])' \
+  "$CODEX_HOME"/sessions/*/*/*/rollout-*.jsonl</code></pre>
+            <p>
+              Codex의 훅 설정은 <code>hooks.json</code>이 아니라
+              <code>config.toml</code>에 있습니다:
+            </p>
+<pre><code>[[hooks.PreToolUse]]
+matcher = "shell"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"          # variants seen in the binary: command | prompt | agent
+command = "/abs/path/to/hook.sh"</code></pre>
+          </div>
+
+          <div class="field">
+            <h4>미해결 질문</h4>
+            <p>
+              <strong>Codex가 전달하는 정확한 <code>PreToolUse</code> 페이로드는
+              아직 검증되지 않았습니다.</strong> 바이너리에서 필드
+              <em>이름</em>(<code>tool_name</code>, <code>tool_input</code>)은
+              알아냈지만, <code>shell</code> / <code>exec</code>에 대해
+              <code>tool_input</code>이 무엇을 담는지는 모릅니다. 프로브 훅은 훅
+              신뢰 때문에 발화하지 않았고, 이를 확인하려면 신뢰 프롬프트를
+              수락하는 대화형 Codex 세션이거나
+              <code>--dangerously-bypass-hook-trust</code>가 필요합니다.
+            </p>
+            <p>
+              <strong>이것부터 하십시오.</strong> 아래의 모든 것이 그 답에 달려
+              있으며, 여기서 추측하는 것이야말로 조용한 우회가 출시되는 바로 그
+              경로입니다.
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>필요한 작업</h4>
+            <ol>
+              <li>평범한 <code>shell</code> 호출과 코드 모드 <code>exec</code> 호출 양쪽에 대해 실제 <code>PreToolUse</code> 페이로드를 포착합니다(위 미해결 질문 참고).</li>
+              <li>Codex가 만들어낼 수 있는 모든 형태에서 명령을 추출합니다 — 최소한 <code>tool_input.command</code>(문자열), argv 배열, 그리고 코드 모드의 JS <code>tools.exec_command({"cmd": "…"})</code>. <strong>인식되지 않는 형태에서는 안전하게 실패(fail closed):</strong> 명령을 추출할 수 없으면 통과시키지 말고 확인을 요청합니다. 이는 <code>guard-remote-ops.sh</code>의 현재 fail-open 자세를 뒤집는 것으로, 그 자세는 매칭되지 않음이 정말로 "셸 명령이 아님"을 뜻할 때만 안전합니다.</li>
+              <li>Codex의 도구 이름(<code>shell</code>, <code>exec</code>)에 훅을 등록합니다 — 두 번째 매처를 두거나 Codex 전용 <code>config.toml</code> 블록을 둡니다.</li>
+              <li>Codex용 <code>/unguard</code>를 대체합니다: <code>AskUserQuestion</code>도, <code>!</code> 줄도 없습니다. 인자 전용 명령(또는 사용자가 직접 실행하는 평범한 스크립트)이 현실적인 선택지입니다. 4단계의 대화형 설정은 이식되지 않습니다.</li>
+              <li>훅 신뢰 단계를 문서화합니다. 신뢰되지 않은 훅은 조용히 실패하면서 정상 동작하는 훅과 똑같아 보이기 때문입니다.</li>
+              <li>하나의 <code>guard-remote-ops.sh</code>가 두 호스트를 모두 담당할지, 아니면 Codex에 별도의 진입점을 줄지 결정합니다. 호스트를 감지하는 스크립트 하나로 두면 분류 로직(가치 있는 부분)이 한곳에 유지됩니다.</li>
+            </ol>
+          </div>
+
+          <div class="field">
+            <h4>코드 위치</h4>
+            <ul class="codelist">
+              <li><code>scripts/guard-remote-ops.sh</code> — <code>jq -r '.tool_input.command // empty'</code>와 fail-open <code>exit 0</code>, 이 두 줄이 Codex에서 깨집니다</li>
+              <li><code>hooks/hooks.json</code> — <code>matcher: "Bash"</code></li>
+              <li><code>commands/unguard.md</code> — <code>!</code> 줄 + <code>AskUserQuestion</code>(Claude Code 전용)</li>
+              <li><code>README.md</code> — 이식성 참고 사항</li>
+              <li><code>AGENTS.md</code> — 이 작업을 이어받을 에이전트를 위한 레포 컨텍스트</li>
+            </ul>
+          </div>
+
+          <div class="field">
+            <h4>리뷰 루프</h4>
+            <p>
+              발견 사항은 코드 diff가 아니라 직접 측정으로 얻은 것이므로, 코드에
+              대한 리뷰어 서브에이전트는 실행하지 않았습니다. 위의 주장들은 각각
+              관측된 명령 출력으로 뒷받침되며, 명시적으로 <strong>검증되지
+              않은</strong> 한 가지는 단정하는 대신 "미해결 질문"에 따로 밝혀
+              두었습니다.
+            </p>
+          </div>
+
+          <div class="field">
+            <h4>회고</h4>
+            <p class="retro">
+              놀라웠던 것은 Codex가 얼마나 <em>가까운가</em>였습니다 — 같은 이벤트
+              이름, 같은 와이어 포맷, <code>.claude-plugin/</code>을 읽는다는 점 —
+              그리고 바로 그 점이 위험합니다. 거의-호환은 깔끔한
+              <code>plugin add</code>와 오류 0건을 만들어내지만 가드는 완전히
+              부재합니다. 앞으로의 어떤 이식 작업에든 주는 교훈: 설치 성공은 보호의
+              증거가 아니다. 훅이 발화한다는 것을 증명한 뒤에 믿으십시오.
+            </p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

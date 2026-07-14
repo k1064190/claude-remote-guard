@@ -5,6 +5,12 @@ A safety guard for [Claude Code](https://code.claude.com). It forces an explicit
 remote server / cloud resource, so an agent can't silently touch your
 infrastructure — even in auto / accept-edits modes.
 
+> **Claude Code only.** Codex CLI will happily *install* this plugin
+> (`codex plugin add` succeeds, no errors) while protecting **nothing** — its
+> shell tool has a different name and payload shape, so the hook never fires.
+> Don't rely on it there. Details and the work needed for real Codex support:
+> [`docs/stage-5/codex-compatibility.md`](docs/stage-5/codex-compatibility.md).
+
 Covered CLIs: `gcloud`, `gsutil`, `bq`, `aws`, `az`, `kubectl`, `ssh`, `scp`, `terraform`.
 
 Container image tooling (`docker`, `podman`, `nerdctl`) is also covered, but only
